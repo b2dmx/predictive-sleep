@@ -108,25 +108,18 @@ Copy `custom_components/predictive_bedtime` into your `config/custom_components`
 
 `predictive_bedtime.forget_last_night` removes the most recent sleep for one person (pick their entry).
 
-## Settings
+## Setup and settings
 
-Setup asks for the person, their calendars and how to read each, their sleep signals, learning preferences and a few starting habits. Everything can be changed later under **Configure**, which offers **Calendars** and **Sleep signals, learning and habits**. Everything can be changed later under **Configure**:
+Setup takes a minute: the person, their calendars (and, for each, whether it holds only work shifts, work and appointments, or is shared with others), how to tell they're in bed, and a starting point for their usual bedtime, sleep needed and get-ready time. Those three are learned from real nights from then on, so they aren't settings.
 
-| Setting | Default |
+Everything else is optional and lives under **Configure**:
+
+| Page | Settings (defaults) |
 |---|---|
-| Usual bedtime with no shift nearby | 23:30 |
-| Sleep needed before a shift | 7.5 h |
-| Wake-up to shift start (getting ready + commute; learned) | 75 min |
-| Wind-down before bedtime | 60 min |
-| Shortest time from shift end to bed | 90 min |
-| Time in bed before it counts as a sleep attempt | 20 min |
-| Time out of bed before it counts as awake | 30 min |
-| Shortest stretch that counts as a night | 3 h |
-| Learning window | 365 days |
-| Pause learning when | (none) |
-| Pause states | on, Guest, Vacation, Away |
-| Notification after each night | (off) |
-| Account for sleep debt | off |
+| Calendars | Calendars and what each holds; the words that make an event count on mixed and shared calendars |
+| Sleep signals | In-bed sensors, sleep trackers, tracker states that mean asleep |
+| Learning | Pause learning when (none) / in states (on, Guest, Vacation, Away); a note after each night (off); sleep debt (off); remember nights for (365 days) |
+| Timing | Wind-down (60 min before bedtime); in bed 20 min counts as going to sleep; out of bed 30 min counts as awake; shortest night 3 h |
 
 ## Privacy
 

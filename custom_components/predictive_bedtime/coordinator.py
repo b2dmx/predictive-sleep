@@ -307,6 +307,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
     async def _async_run_backfill(self) -> None:
         await self._async_backfill()
         self._save()
+        # Departures (for get-ready time) come from presence history, not the bed.
+        await self._async_recover_history()
         await self.async_request_refresh()
 
     @callback

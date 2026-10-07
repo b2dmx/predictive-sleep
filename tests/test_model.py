@@ -334,6 +334,16 @@ def test_predictions_use_learned_habits_not_setup_values():
     assert "22:30" <= local(pred.schedule_bedtime)[3:] <= "22:45", local(pred.schedule_bedtime)
 
 
+def test_daytime_sleeps_do_not_count_toward_usual_bedtime():
+    nights = [model.Episode(e.onset + timedelta(minutes=30), e.wake, None, None) for e in _free_nights(10, 22, 8)]
+    # Two long afternoon sleeps on days off.
+    naps = [model.Episode(at(20 + d, 13, 30), at(20 + d, 17), None, None) for d in range(2)]
+    now = nights[-1].wake + timedelta(hours=4)
+    with_naps, count = model.learned_usual_bedtime(now, nights + naps, P, TZ)
+    without, _ = model.learned_usual_bedtime(now, nights, P, TZ)
+    assert count == 10 and abs(with_naps - without) < 0.01
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in list(globals().items()):

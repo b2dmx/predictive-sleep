@@ -1,69 +1,9 @@
 {
   "config": {
     "step": {
-      "sources": {
-        "title": "Calendars",
-        "description": "Pick every calendar that can have something {name} needs to be up for: a work calendar, a school or family calendar, a personal one. The next steps ask how to read each.",
-        "data": {
-          "calendars": "Calendars"
-        }
-      },
-      "habits": {
-        "title": "Starting habits",
-        "description": "Where learning starts for {name}. Each of these is then learned from {name}'s real nights and replaced as they accumulate, so there's no need to come back and adjust them.",
-        "data": {
-          "free_bedtime": "Usual bedtime with no shift nearby",
-          "target_sleep_hours": "Sleep needed before a shift",
-          "prep_minutes": "Wake-up to shift start",
-          "wind_down_minutes": "Wind-down before bedtime"
-        },
-        "data_description": {
-          "free_bedtime": "On nights with nothing early the next morning.",
-          "target_sleep_hours": "Before a shift that gets {name} up.",
-          "prep_minutes": "Getting ready plus commute.",
-          "wind_down_minutes": "How early the Wind-down sensor turns on, for dimming lights or cooling the bedroom. This one is a preference, not learned."
-        }
-      },
-      "signals": {
-        "title": "How to tell when {name} sleeps",
-        "description": "Pick at least one signal. Use as many as you have: when one is missing (a watch not worn, a flaky sensor), the others fill in.",
-        "data": {
-          "in_bed_signals": "In-bed signals",
-          "asleep_signals": "Sleep trackers",
-          "asleep_states": "States that mean asleep"
-        },
-        "data_description": {
-          "in_bed_signals": "On while {name} is in bed: a bed pressure sensor for their side, an mmWave presence sensor aimed at the bed, or similar. 20 minutes settled counts as going to sleep; 3 hours or more counts as a night.",
-          "asleep_signals": "Measured sleep, such as Sleep as Android, Withings, Fitbit, or Apple Health sleep data (e.g. via Health Auto Export). Trusted straight away. Not Sleep Focus or bedtime schedules: those follow preset times, not actual sleep.",
-          "asleep_states": "Only matters for trackers that report text states. Any of these states counts as asleep."
-        }
-      },
-      "learning": {
-        "title": "Learning and feedback",
-        "description": "All optional. Nights that are not typical for {name} (guests, travel, illness) can be kept out of learning.",
-        "data": {
-          "pause_entities": "Pause learning when",
-          "pause_states": "…is in one of these states",
-          "notify_service": "Send a note after each night to",
-          "use_sleep_debt": "Account for sleep debt"
-        },
-        "data_description": {
-          "pause_entities": "For example a home-mode selector or a guest/vacation toggle. Nights are not learned while any of these is in one of the states below. There is also a Learning switch to pause by hand.",
-          "pause_states": "Matched ignoring case. Type your own and press Enter to add it.",
-          "notify_service": "A phone from the Home Assistant app. After each recorded night it gets a note with a Forget button, for nights that were not normal.",
-          "use_sleep_debt": "Also compare how much {name} slept in the previous 48 hours, since short nights tend to lead to earlier bedtimes. Best turned on once a few weeks of nights have been learned."
-        }
-      },
-      "person": {
-        "title": "Who is this for?",
-        "description": "Predictive Sleep learns when someone goes to sleep from their work schedule and their bed, then predicts upcoming bedtimes so the home can get ready ahead of time.\n\nAdd one entry per person.",
-        "data": {
-          "person": "Person"
-        }
-      },
       "user": {
         "title": "Predictive Sleep",
-        "description": "Predictive Sleep learns when each person goes to sleep from their work schedule and sleep signals, then predicts upcoming bedtimes so the home can get ready ahead of time.\n\nPredictive Sleep v{version} by Goobis\nAI was used to help develop this integration.",
+        "description": "Learns when each person goes to sleep and predicts their next bedtime, so the home can get ready ahead of time.\n\nPredictive Sleep v{version} by Goobis\nAI was used to help develop this integration.",
         "menu_options": {
           "person": "Add a person",
           "household": "Add household sensors"
@@ -71,27 +11,53 @@
       },
       "household": {
         "title": "Household sensors",
-        "description": "Adds whole-home sensors across everyone set up: whether everyone home is expected asleep, whether anyone is winding down, and the earliest and latest predicted bedtimes. Useful for locks, heating and common-area lights, especially without a home-mode system of your own."
+        "description": "Adds whole-home sensors: whether everyone home is expected asleep, whether anyone is winding down, and the earliest and latest bedtimes tonight."
+      },
+      "person": {
+        "title": "Who is this for?",
+        "data": {
+          "person": "Person"
+        }
+      },
+      "sources": {
+        "title": "{name}'s calendars",
+        "description": "Pick the calendars with things {name} needs to be up for, like work.",
+        "data": {
+          "calendars": "Calendars"
+        }
       },
       "calendar": {
-        "title": "Reading {calendar}",
-        "description": "Tell Predictive Sleep which events on {calendar} mean {name} needs to be up. All-day events (birthdays, holidays) are always ignored.",
+        "title": "{calendar}",
+        "description": "What does {name} use this calendar for?",
         "data": {
-          "mode": "What's on this calendar?",
-          "words": "Events that count mention",
-          "require_name": "Only events that mention {name}"
+          "content": "This calendar holds"
+        }
+      },
+      "signals": {
+        "title": "How do we know {name} is in bed?",
+        "description": "Pick at least one.",
+        "data": {
+          "in_bed_signals": "In-bed sensors",
+          "asleep_signals": "Sleep tracker (optional)"
         },
         "data_description": {
-          "mode": "Work shifts shape the whole sleep pattern. On a mixed calendar only events with the words below count, and those that are not work are treated as appointments: they set how early {name} must be up, nothing more.",
-          "words": "Whole words, ignoring case: \"doctor\" matches \"Doctor (Sam)\" and \"Sam doctor\", not \"Doctors' Day party\". Type your own and press Enter. Ignored for work calendars.",
-          "require_name": "For calendars shared with others, e.g. \"{name} dentist\" counts but \"Alex dentist\" does not. Home Assistant can't see who created an event, so the name in the title or description stands in for it."
+          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule."
+        }
+      },
+      "habits": {
+        "title": "A starting point",
+        "description": "Rough guesses are fine. These are learned from {name}'s real nights from here on.",
+        "data": {
+          "free_bedtime": "Usual bedtime on a night off",
+          "target_sleep_hours": "Sleep needed before work",
+          "prep_minutes": "Time from waking to starting work"
         }
       }
     },
     "error": {
       "no_calendars": "Pick at least one calendar.",
-      "no_signals": "Pick at least one in-bed signal or sleep tracker.",
-      "no_keywords": "Add at least one word."
+      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
     },
     "abort": {
       "already_configured": "This person is already set up.",
@@ -101,61 +67,74 @@
   "options": {
     "step": {
       "init": {
-        "title": "Predictive Sleep settings",
+        "title": "{name}",
         "menu_options": {
           "calendars": "Calendars",
-          "settings": "Sleep signals, learning and habits"
+          "signals": "Sleep signals",
+          "learning": "Learning",
+          "timing": "Timing"
         }
       },
       "calendars": {
-        "title": "Calendars",
-        "description": "Pick every calendar that can have something {name} needs to be up for. The next steps ask how to read each.",
+        "title": "{name}'s calendars",
+        "description": "Pick the calendars with things {name} needs to be up for, like work.",
         "data": {
           "calendars": "Calendars"
         }
       },
       "calendar": {
-        "title": "Reading {calendar}",
-        "description": "Tell Predictive Sleep which events on {calendar} mean {name} needs to be up. All-day events (birthdays, holidays) are always ignored.",
+        "title": "{calendar}",
+        "description": "What does {name} use this calendar for?",
         "data": {
-          "mode": "What's on this calendar?",
-          "words": "Events that count mention",
-          "require_name": "Only events that mention {name}"
+          "content": "This calendar holds",
+          "words": "Words that mean an event counts"
         },
         "data_description": {
-          "mode": "Work shifts shape the whole sleep pattern. On a mixed calendar only events with the words below count, and those that are not work are treated as appointments: they set how early {name} must be up, nothing more.",
-          "words": "Whole words, ignoring case: \"doctor\" matches \"Doctor (Sam)\" and \"Sam doctor\", not \"Doctors' Day party\". Type your own and press Enter. Ignored for work calendars.",
-          "require_name": "For calendars shared with others, e.g. \"{name} dentist\" counts but \"Alex dentist\" does not. Home Assistant can't see who created an event, so the name in the title or description stands in for it."
+          "words": "Only used for mixed and shared calendars. Whole words, ignoring case: \"work\" matches \"Work (Sam)\" but not \"Workout\"."
         }
       },
-      "settings": {
-        "title": "Sleep signals, learning and habits",
+      "signals": {
+        "title": "Sleep signals",
         "data": {
-          "in_bed_signals": "In-bed signals",
+          "in_bed_signals": "In-bed sensors",
           "asleep_signals": "Sleep trackers",
-          "asleep_states": "States that mean asleep",
-          "wind_down_minutes": "Wind-down before bedtime",
-          "settle_minutes": "Time in bed before it counts as a sleep attempt",
-          "wake_gap_minutes": "Time out of bed before it counts as awake",
-          "min_sleep_hours": "Shortest stretch that counts as a night",
-          "learning_window_days": "Learning window",
-          "pause_entities": "Pause learning when",
-          "pause_states": "…is in one of these states",
-          "notify_service": "Send a note after each night to",
-          "use_sleep_debt": "Account for sleep debt"
+          "asleep_states": "Tracker states that mean asleep"
         },
         "data_description": {
-          "learning_window_days": "Nights older than this are discarded. Within the window, recent nights count more.",
-          "asleep_states": "Only matters for trackers that report text states.",
-          "use_sleep_debt": "Also compare how much was slept in the previous 48 hours."
+          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule.",
+          "asleep_states": "Only for trackers that report words instead of on/off."
+        }
+      },
+      "learning": {
+        "title": "Learning",
+        "description": "Usual bedtime, sleep needed, get-ready and unwind times are learned automatically, so they aren't settings.",
+        "data": {
+          "pause_entities": "Pause learning when",
+          "pause_states": "…is in one of these states",
+          "notify_service": "After each night, send a note to",
+          "use_sleep_debt": "Account for sleep debt",
+          "learning_window_days": "Remember nights for"
         },
-        "description": "Usual bedtime, sleep needed, get-ready and unwind time aren't here: they're learned from real nights. The values given at setup were only the starting point."
+        "data_description": {
+          "pause_entities": "For example a home-mode selector, so guest or vacation nights aren't learned.",
+          "notify_service": "A phone. The note has a Forget button for nights that weren't normal.",
+          "use_sleep_debt": "Short nights tend to lead to earlier bedtimes. Best after a few weeks of learning."
+        }
+      },
+      "timing": {
+        "title": "Timing",
+        "data": {
+          "wind_down_minutes": "Wind-down starts this long before bedtime",
+          "settle_minutes": "In bed this long counts as going to sleep",
+          "wake_gap_minutes": "Out of bed this long counts as awake",
+          "min_sleep_hours": "Shortest sleep that counts as a night"
+        }
       }
     },
     "error": {
       "no_calendars": "Pick at least one calendar.",
-      "no_signals": "Pick at least one in-bed signal or sleep tracker.",
-      "no_keywords": "Add at least one word."
+      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
     }
   },
   "entity": {
@@ -214,10 +193,11 @@
     }
   },
   "selector": {
-    "calendar_mode": {
+    "calendar_content": {
       "options": {
         "work": "Only work shifts",
-        "mixed": "Work and other events"
+        "mixed": "Work and appointments",
+        "shared": "Shared with others: only events that mention them"
       }
     }
   },

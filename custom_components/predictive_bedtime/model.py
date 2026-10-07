@@ -419,6 +419,8 @@ FREE_NEXT_MIN = timedelta(hours=12)
 FREE_PREV_MIN = timedelta(hours=3)
 # Going to bed within this long of a shift ending shows how long unwinding takes.
 UNWIND_MAX = timedelta(hours=4)
+# A free-night bedtime more than this many hours from the setup bedtime is a daytime sleep.
+NIGHT_WINDOW_H = 6.0
 
 
 @dataclass(frozen=True)
@@ -458,12 +460,17 @@ def is_free_night(e: Episode) -> bool:
 def learned_usual_bedtime(now: datetime, episodes: Sequence[Episode], p: Params, tz: tzinfo) -> tuple[float, int]:
     """Usual bedtime on free nights, as local clock hours (a circular mean, so 23:30 and
     00:30 average to midnight rather than noon)."""
+    baseline = p.free_bedtime.hour + p.free_bedtime.minute / 60
     x = y = 0.0
     count = 0
     for e in episodes:
         if is_free_night(e):
             local = e.onset.astimezone(tz)
-            angle = (local.hour + local.minute / 60) / 24 * 2 * math.pi
+            clock = local.hour + local.minute / 60
+            # A daytime sleep (a nap, or sleeping off a long day) is not a bedtime.
+            if _clock_gap(clock, baseline) > NIGHT_WINDOW_H:
+                continue
+            angle = clock / 24 * 2 * math.pi
             w = _recency(now, e, p)
             x += w * math.cos(angle)
             y += w * math.sin(angle)
