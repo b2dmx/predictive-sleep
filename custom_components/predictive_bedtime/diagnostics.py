@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .coordinator import BedtimeConfigEntry, BedtimeCoordinator
-from .model import accuracy, is_get_ready_morning, learned_prep
+from .model import accuracy, is_free_night, is_get_ready_morning, learn
 
 
 def _local(value: datetime | None) -> str | None:
@@ -28,6 +28,8 @@ async def async_get_config_entry_diagnostics(
 
     now = dt_util.utcnow()
     p = coordinator.params
+    habits = learn(now, coordinator.episodes, p, dt_util.get_default_time_zone())
+    usual = f"{int(habits.usual_bedtime):02d}:{round(habits.usual_bedtime % 1 * 60) % 60:02d}"
     prediction = coordinator.data
     result = accuracy(coordinator.episodes)
 
@@ -43,6 +45,7 @@ async def async_get_config_entry_diagnostics(
                 "next_commitment": _local(e.next_start),
                 "left_home": _local(e.left_home),
                 "counts_for_get_ready": is_get_ready_morning(e),
+                "free_night": is_free_night(e),
                 "wake_to_next_commitment_min": (
                     _minutes(e.next_start - e.wake) if e.next_start else None
                 ),
@@ -57,9 +60,12 @@ async def async_get_config_entry_diagnostics(
             "enabled": coordinator.learning_enabled,
             "paused_by": coordinator.paused_by,
             "nights": len(coordinator.episodes),
-            "get_ready_setting_min": _minutes(p.prep),
-            "get_ready_learned_min": _minutes(learned_prep(now, coordinator.episodes, p)),
-            "get_ready_mornings": sum(is_get_ready_morning(e) for e in coordinator.episodes),
+            "habits": {
+                "usual_bedtime": {"setup": p.free_bedtime.strftime("%H:%M"), "learned": usual, "nights": habits.free_nights},
+                "sleep_need_hours": {"setup": round(p.target_sleep.total_seconds() / 3600, 2), "learned": round(habits.target_sleep.total_seconds() / 3600, 2), "nights": habits.sleep_nights},
+                "unwind_min": {"setup": _minutes(p.unwind), "learned": _minutes(habits.unwind), "nights": habits.unwind_nights},
+                "get_ready_min": {"setup": _minutes(p.prep), "learned": _minutes(habits.prep), "mornings": habits.prep_mornings},
+            },
             "prediction_error_min": round(result[0]) if result else None,
             "prediction_error_nights": result[1] if result else 0,
         },

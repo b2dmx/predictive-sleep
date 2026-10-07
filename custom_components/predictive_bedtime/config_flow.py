@@ -42,7 +42,6 @@ from .const import (
     CONF_SETTLE,
     CONF_SLEEP_DEBT,
     CONF_TARGET_SLEEP,
-    CONF_UNWIND,
     CONF_WAKE_GAP,
     CONF_WIND_DOWN,
     DEFAULT_OPTIONS,
@@ -113,7 +112,7 @@ HABITS_SCHEMA = vol.Schema(
 
 TUNING_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_UNWIND): _number(0, 240, 5, "min"),
+        vol.Required(CONF_WIND_DOWN): _number(0, 240, 5, "min"),
         vol.Required(CONF_SETTLE): _number(5, 90, 5, "min"),
         vol.Required(CONF_WAKE_GAP): _number(5, 120, 5, "min"),
         vol.Required(CONF_MIN_SLEEP): _number(1, 8, 0.5, "h"),
@@ -425,7 +424,6 @@ class PredictiveBedtimeOptionsFlow(_CalendarRulesMixin, OptionsFlow):
                 return self.async_create_entry(data=options)
         schema = (
             SIGNALS_SCHEMA.extend(_learning_schema(_notify_services(self.hass)).schema)
-            .extend(HABITS_SCHEMA.schema)
             .extend(TUNING_SCHEMA.schema)
         )
         return self.async_show_form(

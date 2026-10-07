@@ -10,7 +10,7 @@
       },
       "habits": {
         "title": "Starting habits",
-        "description": "These guide predictions until enough nights have been learned. After that, {name}'s actual bedtimes take over. Everything can be changed later under Configure.",
+        "description": "Where learning starts for {name}. Each of these is then learned from {name}'s real nights and replaced as they accumulate, so there's no need to come back and adjust them.",
         "data": {
           "free_bedtime": "Usual bedtime with no shift nearby",
           "target_sleep_hours": "Sleep needed before a shift",
@@ -18,8 +18,10 @@
           "wind_down_minutes": "Wind-down before bedtime"
         },
         "data_description": {
-          "prep_minutes": "Getting ready plus commute. A starting value: it is learned from how long before a shift {name} actually gets up.",
-          "wind_down_minutes": "How early the Wind-down sensor turns on, for dimming lights or cooling the bedroom."
+          "free_bedtime": "On nights with nothing early the next morning.",
+          "target_sleep_hours": "Before a shift that gets {name} up.",
+          "prep_minutes": "Getting ready plus commute.",
+          "wind_down_minutes": "How early the Wind-down sensor turns on, for dimming lights or cooling the bedroom. This one is a preference, not learned."
         }
       },
       "signals": {
@@ -132,11 +134,7 @@
           "in_bed_signals": "In-bed signals",
           "asleep_signals": "Sleep trackers",
           "asleep_states": "States that mean asleep",
-          "free_bedtime": "Usual bedtime with no shift nearby",
-          "target_sleep_hours": "Sleep needed before a shift",
-          "prep_minutes": "Wake-up to shift start",
           "wind_down_minutes": "Wind-down before bedtime",
-          "unwind_minutes": "Shortest time from shift end to bed",
           "settle_minutes": "Time in bed before it counts as a sleep attempt",
           "wake_gap_minutes": "Time out of bed before it counts as awake",
           "min_sleep_hours": "Shortest stretch that counts as a night",
@@ -147,12 +145,11 @@
           "use_sleep_debt": "Account for sleep debt"
         },
         "data_description": {
-          "target_sleep_hours": "Used until enough nights have been learned; after that, actual behaviour wins.",
           "learning_window_days": "Nights older than this are discarded. Within the window, recent nights count more.",
           "asleep_states": "Only matters for trackers that report text states.",
-          "use_sleep_debt": "Also compare how much was slept in the previous 48 hours.",
-          "prep_minutes": "Getting ready plus commute. A starting value: it is learned from how long before a shift this person actually gets up."
-        }
+          "use_sleep_debt": "Also compare how much was slept in the previous 48 hours."
+        },
+        "description": "Usual bedtime, sleep needed, get-ready and unwind time aren't here: they're learned from real nights. The values given at setup were only the starting point."
       }
     },
     "error": {

@@ -304,6 +304,36 @@ def test_first_departure_after_waking():
     assert model.first_departure(wake, [(at(19, 18), "home"), (at(20, 9), "not_home")]) is None
 
 
+def test_usual_bedtime_is_learned_from_free_nights():
+    # Free nights around 22:30 pull a 23:30 setup value most of the way there.
+    nights = _free_nights(20, 22, 8)
+    nights = [model.Episode(e.onset + timedelta(minutes=30), e.wake, None, None) for e in nights]
+    now = nights[-1].wake + timedelta(hours=4)
+    hours, count = model.learned_usual_bedtime(now, nights, P, TZ)
+    assert count == 20 and 22.5 <= hours < 22.7, hours
+
+
+def test_usual_bedtime_averages_across_midnight():
+    late = [model.Episode(at(10 + d, 23, 30), at(11 + d, 8), None, None) for d in range(0, 10, 2)]
+    later = [model.Episode(at(11 + d, 0, 30) + timedelta(days=1), at(12 + d, 9), None, None) for d in range(0, 10, 2)]
+    hours, _ = model.learned_usual_bedtime(at(25, 12), late + later, model.Params(free_bedtime=model.time(0, 0)), TZ)
+    assert hours < 0.5 or hours > 23.5, hours  # midnight, not noon
+
+
+def test_nights_before_an_early_shift_are_not_free():
+    shift = at(21, 7)
+    assert not model.is_free_night(model.Episode(at(20, 22), at(21, 6), None, shift))
+    assert model.is_free_night(model.Episode(at(20, 22), at(21, 8), None, at(21, 14)))
+
+
+def test_predictions_use_learned_habits_not_setup_values():
+    nights = [model.Episode(e.onset + timedelta(minutes=30), e.wake, None, None) for e in _free_nights(20, 22, 8)]
+    now = nights[-1].wake + timedelta(hours=4)
+    pred = model.predict(now, now, [], nights, P, TZ)
+    assert 22.5 <= pred.usual_bedtime < 22.7
+    assert "22:30" <= local(pred.schedule_bedtime)[3:] <= "22:45", local(pred.schedule_bedtime)
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in list(globals().items()):

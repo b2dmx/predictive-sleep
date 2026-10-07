@@ -35,7 +35,10 @@ def _bedtime_attrs(c: BedtimeCoordinator) -> dict[str, Any]:
         "previous_shift_end": _iso(p.prev_end),
         "next_shift_start": _iso(p.next_start),
         "wake_by": _iso(p.next_start - p.prep) if p.next_start else None,
-        # Learned from how long before shifts this person actually gets up.
+        # Learned habits (setup values until enough nights accumulate).
+        "usual_bedtime": f"{int(p.usual_bedtime):02d}:{round(p.usual_bedtime % 1 * 60) % 60:02d}",
+        "sleep_need_hours": round(p.target_sleep.total_seconds() / 3600, 2),
+        "unwind_minutes": round(p.unwind.total_seconds() / 60),
         "get_ready_minutes": round(p.prep.total_seconds() / 60),
         "nights_learned": len(c.episodes),
         # Held from wind-down until the expected wake-up, rather than drifting.

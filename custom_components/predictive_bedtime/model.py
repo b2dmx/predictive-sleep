@@ -169,6 +169,10 @@ class Prediction:
     next_start: datetime | None
     nights_used: int
     prep: timedelta = timedelta(minutes=75)
+    # Learned baselines this prediction used (setup values until nights accumulate).
+    usual_bedtime: float = 23.5
+    target_sleep: timedelta = timedelta(hours=7.5)
+    unwind: timedelta = timedelta(minutes=90)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -180,6 +184,9 @@ class Prediction:
             "next_start": _iso(self.next_start),
             "nights_used": self.nights_used,
             "prep_minutes": self.prep.total_seconds() / 60,
+            "usual_bedtime": self.usual_bedtime,
+            "target_sleep_hours": _hours(self.target_sleep),
+            "unwind_minutes": self.unwind.total_seconds() / 60,
         }
 
     @classmethod
@@ -193,6 +200,9 @@ class Prediction:
             next_start=_parse(data.get("next_start")),
             nights_used=data.get("nights_used", 0),
             prep=timedelta(minutes=data.get("prep_minutes", 75)),
+            usual_bedtime=data.get("usual_bedtime", 23.5),
+            target_sleep=timedelta(hours=data.get("target_sleep_hours", 7.5)),
+            unwind=timedelta(minutes=data.get("unwind_minutes", 90)),
         )
 
 
@@ -403,6 +413,109 @@ def learned_prep(
     return timedelta(hours=hours)
 
 
+# A night counts as "free" when nothing needs the person up within this long of going to
+# bed, and they did not just get home from a shift.
+FREE_NEXT_MIN = timedelta(hours=12)
+FREE_PREV_MIN = timedelta(hours=3)
+# Going to bed within this long of a shift ending shows how long unwinding takes.
+UNWIND_MAX = timedelta(hours=4)
+
+
+@dataclass(frozen=True)
+class Learned:
+    """The person's own habits, learned from their nights.
+
+    Each starts at the setup value and moves toward what the nights show, the more so the
+    more nights there are; recent nights count more.
+    """
+
+    usual_bedtime: float  # local clock hours, e.g. 22.5
+    target_sleep: timedelta
+    unwind: timedelta
+    prep: timedelta
+    free_nights: int
+    sleep_nights: int
+    unwind_nights: int
+    prep_mornings: int
+
+
+def _recency(now: datetime, e: Episode, p: Params) -> float:
+    return 0.5 ** (_hours(now - e.onset) / 24 / p.half_life_days)
+
+
+def _blend(samples: list[tuple[float, float]], baseline: float) -> float:
+    """Weighted mean of (value, weight) samples, pulled toward baseline while data is thin."""
+    total = sum(v * w for v, w in samples) + PRIOR_WEIGHT * baseline
+    return total / (sum(w for _, w in samples) + PRIOR_WEIGHT)
+
+
+def is_free_night(e: Episode) -> bool:
+    return (e.next_start is None or e.next_start - e.onset >= FREE_NEXT_MIN) and (
+        e.prev_end is None or e.onset - e.prev_end >= FREE_PREV_MIN
+    )
+
+
+def learned_usual_bedtime(now: datetime, episodes: Sequence[Episode], p: Params, tz: tzinfo) -> tuple[float, int]:
+    """Usual bedtime on free nights, as local clock hours (a circular mean, so 23:30 and
+    00:30 average to midnight rather than noon)."""
+    x = y = 0.0
+    count = 0
+    for e in episodes:
+        if is_free_night(e):
+            local = e.onset.astimezone(tz)
+            angle = (local.hour + local.minute / 60) / 24 * 2 * math.pi
+            w = _recency(now, e, p)
+            x += w * math.cos(angle)
+            y += w * math.sin(angle)
+            count += 1
+    base = (p.free_bedtime.hour + p.free_bedtime.minute / 60) / 24 * 2 * math.pi
+    x += PRIOR_WEIGHT * math.cos(base)
+    y += PRIOR_WEIGHT * math.sin(base)
+    return (math.atan2(y, x) / (2 * math.pi) * 24) % 24, count
+
+
+def learned_target_sleep(now: datetime, episodes: Sequence[Episode], p: Params) -> tuple[timedelta, int]:
+    """How long they actually sleep before a shift that gets them up."""
+    samples = [
+        (_hours(e.wake - e.onset), _recency(now, e, p))
+        for e in episodes
+        if is_get_ready_morning(e)
+    ]
+    return timedelta(hours=_blend(samples, _hours(p.target_sleep))), len(samples)
+
+
+def learned_unwind(now: datetime, episodes: Sequence[Episode], p: Params) -> tuple[timedelta, int]:
+    """How soon after a shift they get to bed, from nights they went to bed soon after one."""
+    samples = [
+        (_hours(e.onset - e.prev_end), _recency(now, e, p))
+        for e in episodes
+        if e.prev_end is not None and timedelta() < e.onset - e.prev_end <= UNWIND_MAX
+    ]
+    return timedelta(hours=_blend(samples, _hours(p.unwind))), len(samples)
+
+
+def learn(
+    now: datetime,
+    episodes: Sequence[Episode],
+    p: Params,
+    tz: tzinfo,
+    for_start: datetime | None = None,
+) -> Learned:
+    usual, free = learned_usual_bedtime(now, episodes, p, tz)
+    target, slept = learned_target_sleep(now, episodes, p)
+    unwind, unwound = learned_unwind(now, episodes, p)
+    return Learned(
+        usual_bedtime=usual,
+        target_sleep=target,
+        unwind=unwind,
+        prep=learned_prep(now, episodes, p, tz, for_start),
+        free_nights=free,
+        sleep_nights=slept,
+        unwind_nights=unwound,
+        prep_mornings=sum(is_get_ready_morning(e) for e in episodes),
+    )
+
+
 def predict(
     now: datetime,
     start: datetime,
@@ -412,11 +525,18 @@ def predict(
     tz: tzinfo,
 ) -> Prediction:
     """Predict the next sleep onset at or after start, and when it will end."""
-    # Get-ready time for the next thing to be up for, learned from similar start times.
+    # The schedule-based estimate uses the person's learned habits, not the setup values:
+    # those are only where learning starts. Get-ready time is for the next thing to be up
+    # for, learned from similar start times.
     _, upcoming = neighbours(start, shifts)
+    habits = learn(now, episodes, p, tz, upcoming.start if upcoming else None)
+    minutes = round(habits.usual_bedtime * 60) % (24 * 60)
     p = replace(
         p,
-        prep=learned_prep(now, episodes, p, tz, upcoming.start if upcoming else None),
+        prep=habits.prep,
+        target_sleep=habits.target_sleep,
+        unwind=habits.unwind,
+        free_bedtime=time(minutes // 60, minutes % 60),
     )
     rule = schedule_bedtime(start, shifts, p, tz)
 
@@ -486,6 +606,9 @@ def predict(
         next_start=nxt.start if nxt else None,
         nights_used=len(learned),
         prep=p.prep,
+        usual_bedtime=habits.usual_bedtime,
+        target_sleep=habits.target_sleep,
+        unwind=habits.unwind,
     )
 
 
