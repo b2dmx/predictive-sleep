@@ -1,0 +1,64 @@
+# Predictive Sleep card for Mushroom (https://github.com/piitaya/lovelace-mushroom).
+# Same entities as default.yaml; replace "sam" with the person's first name.
+type: vertical-stack
+cards:
+  - type: custom:mushroom-title-card
+    title: Sam's sleep
+    subtitle: >-
+      {% if is_state('binary_sensor.sam_predictive_sleep_expected_asleep', 'on') %}Asleep
+      {% elif is_state('binary_sensor.sam_predictive_sleep_wind_down', 'on') %}Winding down
+      {% else %}Awake{% endif %}
+  - type: custom:mushroom-chips-card
+    chips:
+      - type: entity
+        entity: sensor.sam_predictive_sleep_prediction_confidence
+        icon: mdi:chart-bell-curve
+      - type: entity
+        entity: sensor.sam_predictive_sleep_prediction_error
+        icon: mdi:target
+      - type: entity
+        entity: switch.sam_predictive_sleep_learning
+        tap_action:
+          action: toggle
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        primary: Next bedtime
+        secondary: >-
+          {% set t = states('sensor.sam_predictive_sleep_next_bedtime') | as_datetime(none) %}
+          {{ t | as_timestamp | timestamp_custom('%a %-I:%M %p') if t else '—' }}
+        icon: mdi:bed-clock
+        icon_color: indigo
+        entity: sensor.sam_predictive_sleep_next_bedtime
+      - type: custom:mushroom-template-card
+        primary: Next wake-up
+        secondary: >-
+          {% set t = states('sensor.sam_predictive_sleep_next_wake_up') | as_datetime(none) %}
+          {{ t | as_timestamp | timestamp_custom('%a %-I:%M %p') if t else '—' }}
+        icon: mdi:alarm
+        icon_color: amber
+        entity: sensor.sam_predictive_sleep_next_wake_up
+  - type: custom:mushroom-template-card
+    primary: Last sleep
+    secondary: >-
+      {% set b = states('sensor.sam_predictive_sleep_last_bedtime') | as_datetime(none) %}
+      {% set w = states('sensor.sam_predictive_sleep_last_wake_up') | as_datetime(none) %}
+      {% if b and w %}{{ b | as_timestamp | timestamp_custom('%-I:%M %p') }} to
+      {{ w | as_timestamp | timestamp_custom('%-I:%M %p') }},
+      {{ states('sensor.sam_predictive_sleep_last_sleep_duration') | float(0) | round(1) }} h
+      {% else %}—{% endif %}
+    icon: mdi:history
+    icon_color: grey
+    entity: sensor.sam_predictive_sleep_last_sleep_duration
+  - type: custom:mushroom-entity-card
+    entity: button.sam_predictive_sleep_forget_last_sleep
+    name: Forget last sleep
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.sam_predictive_sleep_forget_last_sleep
+      confirmation:
+        text: Forget the last recorded sleep?

@@ -1,0 +1,253 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Predictive Sleep",
+        "description": "Learns when each person goes to sleep and predicts their next bedtime, so the home can get ready ahead of time.\n\nPredictive Sleep v{version} by Goobis\nAI was used to help develop this integration.",
+        "menu_options": {
+          "person": "Add a person",
+          "household": "Add household sensors"
+        }
+      },
+      "household": {
+        "title": "Household sensors",
+        "description": "Adds whole-home sensors: whether everyone home is expected asleep, whether anyone is winding down, and the earliest and latest bedtimes tonight."
+      },
+      "person": {
+        "title": "Who is this for?",
+        "data": {
+          "person": "Person"
+        }
+      },
+      "sources": {
+        "title": "{name}'s calendars",
+        "description": "Pick the calendars with things {name} needs to be up for, like work.",
+        "data": {
+          "calendars": "Calendars"
+        }
+      },
+      "calendar": {
+        "title": "{calendar}",
+        "description": "What does {name} use this calendar for?",
+        "data": {
+          "content": "This calendar holds"
+        }
+      },
+      "signals": {
+        "title": "How do we know {name} is in bed?",
+        "description": "Pick at least one.",
+        "data": {
+          "in_bed_signals": "In-bed sensors",
+          "asleep_signals": "Sleep tracker (optional)"
+        },
+        "data_description": {
+          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule."
+        }
+      },
+      "habits": {
+        "title": "A starting point",
+        "description": "Rough guesses are fine. These are learned from {name}'s real nights from here on.",
+        "data": {
+          "free_bedtime": "Usual bedtime on a night off",
+          "target_sleep_hours": "Sleep needed before work",
+          "prep_minutes": "Time from waking to starting work"
+        }
+      },
+      "unnamed": {
+        "title": "{calendar}",
+        "description": "Some events here won't say who they're for, like \"Dentist\".",
+        "data": {
+          "unnamed": "Events without a name"
+        },
+        "data_description": {
+          "unnamed": "Guessing works it out from who leaves home for it, then remembers the title and place for next time."
+        }
+      }
+    },
+    "error": {
+      "no_calendars": "Pick at least one calendar.",
+      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
+    },
+    "abort": {
+      "already_configured": "This person is already set up.",
+      "household_exists": "Household sensors are already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "{name}",
+        "menu_options": {
+          "calendars": "Calendars",
+          "signals": "Sleep signals",
+          "learning": "Learning",
+          "timing": "Timing"
+        }
+      },
+      "calendars": {
+        "title": "{name}'s calendars",
+        "description": "Pick the calendars with things {name} needs to be up for, like work.",
+        "data": {
+          "calendars": "Calendars"
+        }
+      },
+      "calendar": {
+        "title": "{calendar}",
+        "description": "What does {name} use this calendar for?",
+        "data": {
+          "content": "This calendar holds",
+          "words": "Words that mean an event counts"
+        },
+        "data_description": {
+          "words": "Only used for mixed and shared calendars. Whole words, ignoring case: \"work\" matches \"Work (Sam)\" but not \"Workout\"."
+        }
+      },
+      "signals": {
+        "title": "Sleep signals",
+        "data": {
+          "in_bed_signals": "In-bed sensors",
+          "asleep_signals": "Sleep trackers",
+          "asleep_states": "Tracker states that mean asleep"
+        },
+        "data_description": {
+          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule.",
+          "asleep_states": "Only for trackers that report words instead of on/off."
+        }
+      },
+      "learning": {
+        "title": "Learning",
+        "description": "Usual bedtime, sleep needed, get-ready and unwind times are learned automatically, so they aren't settings.",
+        "data": {
+          "pause_entities": "Pause learning when",
+          "pause_states": "…is in one of these states",
+          "notify_service": "After each night, send a note to",
+          "use_sleep_debt": "Account for sleep debt",
+          "learning_window_days": "Remember nights for"
+        },
+        "data_description": {
+          "pause_entities": "For example a home-mode selector, so guest or vacation nights aren't learned.",
+          "notify_service": "A phone. The note has a Forget button for nights that weren't normal.",
+          "use_sleep_debt": "Short nights tend to lead to earlier bedtimes. Best after a few weeks of learning."
+        }
+      },
+      "timing": {
+        "title": "Timing",
+        "data": {
+          "wind_down_minutes": "Wind-down starts this long before bedtime",
+          "settle_minutes": "In bed this long counts as going to sleep",
+          "wake_gap_minutes": "Out of bed this long counts as awake",
+          "min_sleep_hours": "Shortest sleep that counts as a night"
+        }
+      },
+      "unnamed": {
+        "title": "{calendar}",
+        "description": "Some events here won't say who they're for, like \"Dentist\".",
+        "data": {
+          "unnamed": "Events without a name"
+        },
+        "data_description": {
+          "unnamed": "Guessing works it out from who leaves home for it, then remembers the title and place for next time."
+        }
+      }
+    },
+    "error": {
+      "no_calendars": "Pick at least one calendar.",
+      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "predicted_bedtime": {
+        "name": "Next bedtime"
+      },
+      "expected_wake": {
+        "name": "Next wake-up"
+      },
+      "confidence": {
+        "name": "Prediction confidence"
+      },
+      "accuracy": {
+        "name": "Prediction error"
+      },
+      "last_sleep": {
+        "name": "Last bedtime"
+      },
+      "last_sleep_duration": {
+        "name": "Last sleep duration"
+      },
+      "first_bedtime": {
+        "name": "Earliest bedtime"
+      },
+      "last_bedtime": {
+        "name": "Latest bedtime"
+      },
+      "last_wake": {
+        "name": "Last wake-up"
+      }
+    },
+    "binary_sensor": {
+      "expected_asleep": {
+        "name": "Expected asleep"
+      },
+      "wind_down": {
+        "name": "Wind-down"
+      },
+      "household_expected_asleep": {
+        "name": "Everyone expected asleep"
+      },
+      "anyone_winding_down": {
+        "name": "Anyone winding down"
+      }
+    },
+    "switch": {
+      "learning": {
+        "name": "Learning"
+      }
+    },
+    "button": {
+      "forget_last_night": {
+        "name": "Forget last sleep"
+      }
+    }
+  },
+  "selector": {
+    "calendar_content": {
+      "options": {
+        "work": "Only work shifts",
+        "mixed": "Work and appointments",
+        "shared": "Shared with others"
+      }
+    },
+    "unnamed": {
+      "options": {
+        "guess": "Guess who it's for",
+        "ignore": "Ignore"
+      }
+    }
+  },
+  "services": {
+    "forget_last_night": {
+      "name": "Forget last sleep",
+      "description": "Removes the most recently recorded sleep from learning, for one that was not typical.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Person",
+          "description": "The person's Predictive Sleep entry."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_loaded": {
+      "message": "That Predictive Sleep entry is not loaded."
+    }
+  },
+  "issues": {
+    "missing_calendar": {
+      "title": "{name}: calendar not found",
+      "description": "Predictive Sleep can't find {calendars}. It may have been removed or renamed, so {name}'s predictions are using the last shifts it read. Choose the calendars again under Settings → Devices & services → Predictive Sleep → Configure → Calendars."
+    }
+  }
+}

@@ -1,0 +1,7 @@
+forget_last_night:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: predictive_bedtime

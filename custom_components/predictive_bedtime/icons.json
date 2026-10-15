@@ -1,0 +1,74 @@
+{
+  "entity": {
+    "sensor": {
+      "predicted_bedtime": {
+        "default": "mdi:bed-clock"
+      },
+      "expected_wake": {
+        "default": "mdi:alarm"
+      },
+      "confidence": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "last_sleep": {
+        "default": "mdi:bed-clock"
+      },
+      "accuracy": {
+        "default": "mdi:target"
+      },
+      "first_bedtime": {
+        "default": "mdi:sort-clock-ascending-outline"
+      },
+      "last_bedtime": {
+        "default": "mdi:sort-clock-descending-outline"
+      },
+      "last_sleep_duration": {
+        "default": "mdi:timer-sand"
+      },
+      "last_wake": {
+        "default": "mdi:weather-sunset-up"
+      }
+    },
+    "binary_sensor": {
+      "expected_asleep": {
+        "default": "mdi:bed-outline",
+        "state": {
+          "on": "mdi:sleep"
+        }
+      },
+      "wind_down": {
+        "default": "mdi:weather-night",
+        "state": {
+          "on": "mdi:weather-night-partly-cloudy"
+        }
+      },
+      "household_expected_asleep": {
+        "default": "mdi:home-outline",
+        "state": {
+          "on": "mdi:home-moon"
+        }
+      },
+      "anyone_winding_down": {
+        "default": "mdi:weather-night"
+      }
+    },
+    "switch": {
+      "learning": {
+        "default": "mdi:school",
+        "state": {
+          "off": "mdi:school-outline"
+        }
+      }
+    },
+    "button": {
+      "forget_last_night": {
+        "default": "mdi:delete-clock"
+      }
+    }
+  },
+  "services": {
+    "forget_last_night": {
+      "service": "mdi:delete-clock"
+    }
+  }
+}

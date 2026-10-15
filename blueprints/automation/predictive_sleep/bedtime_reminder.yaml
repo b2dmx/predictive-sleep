@@ -1,0 +1,70 @@
+blueprint:
+  name: Predictive Sleep - Bedtime reminder before early shifts
+  description: >-
+    Sends a phone notification a set time before the predicted bedtime, only when the
+    next shift starts soon after it, so a full night still fits.
+  domain: automation
+  source_url: https://github.com/b2dmx/predictive-sleep/blob/main/blueprints/automation/predictive_sleep/bedtime_reminder.yaml
+  input:
+    next_bedtime:
+      name: Next bedtime
+      description: The person's Next bedtime sensor.
+      selector:
+        entity:
+          filter:
+            - integration: predictive_bedtime
+              domain: sensor
+              device_class: timestamp
+    notify_action:
+      name: Notify action
+      description: For example notify.mobile_app_sams_phone.
+      selector:
+        text: {}
+    lead_minutes:
+      name: Remind this long before bedtime
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 180
+          unit_of_measurement: min
+    within_hours:
+      name: Only when the next shift starts within
+      description: Hours after the predicted bedtime. Later shifts do not need a reminder.
+      default: 10
+      selector:
+        number:
+          min: 4
+          max: 16
+          unit_of_measurement: h
+
+mode: single
+
+trigger_variables:
+  bedtime_entity: !input next_bedtime
+  lead: !input lead_minutes
+
+triggers:
+  - trigger: template
+    value_template: >-
+      {% set bedtime = states(bedtime_entity) | as_datetime(none) %}
+      {{ bedtime is not none
+         and bedtime - timedelta(minutes=lead | int) <= now() < bedtime }}
+
+variables:
+  within: !input within_hours
+  bedtime: "{{ states(bedtime_entity) | as_datetime }}"
+  shift: "{{ state_attr(bedtime_entity, 'next_shift_start') | as_datetime(none) }}"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ shift is not none and shift - bedtime <= timedelta(hours=within | float) }}
+
+actions:
+  - action: !input notify_action
+    data:
+      title: Bedtime soon
+      message: >-
+        Aim for bed by {{ as_local(bedtime).strftime('%H:%M') }} for a full night before
+        the {{ as_local(shift).strftime('%H:%M') }} shift.

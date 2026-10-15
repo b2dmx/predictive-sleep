@@ -1,0 +1,14 @@
+{
+  "domain": "predictive_bedtime",
+  "name": "Predictive Sleep",
+  "after_dependencies": ["recorder"],
+  "codeowners": ["@b2dmx"],
+  "config_flow": true,
+  "dependencies": ["calendar"],
+  "documentation": "https://github.com/b2dmx/predictive-sleep",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/b2dmx/predictive-sleep/issues",
+  "requirements": [],
+  "version": "0.11.0"
+}

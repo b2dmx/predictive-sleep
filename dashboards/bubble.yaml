@@ -1,0 +1,76 @@
+# Predictive Sleep card for Bubble Card (https://github.com/Clooos/Bubble-Card).
+# Same entities as default.yaml; replace "sam" with the person's first name.
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: separator
+    name: Sam's sleep
+    icon: mdi:sleep
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: sensor.sam_predictive_sleep_next_bedtime
+    name: Next bedtime
+    icon: mdi:bed-clock
+    show_state: true
+    sub_button:
+      - entity: binary_sensor.sam_predictive_sleep_wind_down
+        icon: mdi:weather-night
+        show_state: false
+      - entity: binary_sensor.sam_predictive_sleep_expected_asleep
+        icon: mdi:sleep
+        show_state: false
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: sensor.sam_predictive_sleep_next_wake_up
+    name: Next wake-up
+    icon: mdi:alarm
+    show_state: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: sensor.sam_predictive_sleep_last_sleep_duration
+    name: Last sleep
+    icon: mdi:history
+    show_state: true
+    sub_button:
+      - entity: sensor.sam_predictive_sleep_last_bedtime
+        icon: mdi:bed-clock
+        show_state: true
+      - entity: sensor.sam_predictive_sleep_last_wake_up
+        icon: mdi:weather-sunset-up
+        show_state: true
+  - type: horizontal-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: sensor.sam_predictive_sleep_prediction_confidence
+        name: Prediction confidence
+        show_state: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: sensor.sam_predictive_sleep_prediction_error
+        name: Prediction error
+        show_state: true
+  - type: horizontal-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: switch
+        entity: switch.sam_predictive_sleep_learning
+        name: Learning
+      - type: custom:bubble-card
+        card_type: button
+        button_type: name
+        name: Forget last sleep
+        icon: mdi:delete-clock
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.sam_predictive_sleep_forget_last_sleep
+          confirmation:
+            text: Forget the last recorded sleep?
