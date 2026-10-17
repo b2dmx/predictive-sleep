@@ -9,8 +9,12 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
     BooleanSelector,
@@ -30,6 +34,7 @@ from .const import (
     CONF_ASLEEP_STATES,
     CONF_CALENDAR_RULES,
     CONF_CALENDARS,
+    CONF_FIRST_NAME,
     CONF_FREE_BEDTIME,
     CONF_IN_BED,
     CONF_MIN_SLEEP,
@@ -137,9 +142,10 @@ def _content_of(rule: dict[str, Any]) -> str:
 def _rule_for(
     content: str, words: list[str] | None = None, unnamed: str | None = None
 ) -> dict[str, Any]:
-    if content == CONTENT_WORK:
-        return {"mode": MODE_WORK}
     cleaned = [w.strip() for w in (words or DEFAULT_WAKE_WORDS) if w.strip()]
+    if content == CONTENT_WORK:
+        # Words don't apply to a work calendar, but are kept for switching back.
+        return {"mode": MODE_WORK, "words": cleaned or list(DEFAULT_WAKE_WORDS)}
     rule: dict[str, Any] = {
         "mode": MODE_MIXED,
         "words": cleaned or list(DEFAULT_WAKE_WORDS),
@@ -252,7 +258,7 @@ def _check_signals(user_input: dict[str, Any]) -> dict[str, str]:
 
 
 class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN):
-    VERSION = 6
+    VERSION = 7
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
@@ -262,9 +268,12 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         integration = await async_get_integration(self.hass, DOMAIN)
+        people = [
+            e for e in self._async_current_entries(include_ignore=False) if e.data.get("kind") != KIND_HOUSEHOLD
+        ]
         return self.async_show_menu(
             step_id="user",
-            menu_options=["person", KIND_HOUSEHOLD],
+            menu_options=["person", KIND_HOUSEHOLD] if people else ["person"],
             description_placeholders={"version": str(integration.version or "")},
         )
 
@@ -330,7 +339,7 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
         if user_input is not None:
             return self.async_create_entry(
                 title=f"{self._first_name()} {TITLE_SUFFIX}",
-                data={CONF_PERSON: self._data[CONF_PERSON]},
+                data={CONF_PERSON: self._data[CONF_PERSON], CONF_FIRST_NAME: self._first_name()},
                 options={
                     **DEFAULT_OPTIONS,
                     CONF_ASLEEP_STATES: list(DEFAULT_ASLEEP_VALUES),
@@ -422,6 +431,8 @@ class PredictiveBedtimeOptionsFlow(_CalendarRulesMixin, OptionsFlow):
         self._calendars: list[str] = []
 
     def _first_name(self) -> str:
+        if name := self.config_entry.data.get(CONF_FIRST_NAME):
+            return name
         return self.config_entry.title.split()[0] if self.config_entry.title else "this person"
 
     def _current(self) -> dict[str, Any]:

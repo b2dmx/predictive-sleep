@@ -38,9 +38,13 @@ blueprint:
 
 mode: restart
 
+variables:
+  delay_minutes: !input delay
+
 triggers:
   - trigger: state
     entity_id: !input expected_asleep
+    not_from: [unavailable, unknown]
     to: "on"
     for:
       minutes: !input delay
@@ -60,4 +64,9 @@ actions:
       - conditions:
           - condition: trigger
             id: awake
+          # Only after a bedtime that actually ran: not in and out of bed within the delay.
+          - condition: template
+            value_template: >-
+              {{ (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds()
+                 >= delay_minutes | int * 60 }}
         sequence: !input wake_actions

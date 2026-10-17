@@ -7,16 +7,22 @@ day after the calendars were last read.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, time, timedelta
-import logging
 from typing import Any
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, STATE_HOME
-from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
+)
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -34,10 +40,11 @@ from .const import (
     CALENDAR_RETRY,
     CONF_ASLEEP,
     CONF_ASLEEP_STATES,
+    CONF_CALENDAR_RULES,
     CONF_CALENDARS,
+    CONF_FIRST_NAME,
     CONF_FREE_BEDTIME,
     CONF_IN_BED,
-    CONF_CALENDAR_RULES,
     CONF_MIN_SLEEP,
     CONF_NOTIFY,
     CONF_PAUSE_ENTITIES,
@@ -55,23 +62,24 @@ from .const import (
     DEFAULT_PAUSE_STATES,
     DOMAIN,
     HALF_LIFE_FRACTION,
-    SIGNAL_UPDATED,
+    KIND_HOUSEHOLD,
     NOTIFY_ACTION_PREFIX,
     SHIFT_RETENTION,
+    SIGNAL_UPDATED,
     STORAGE_VERSION,
 )
 from .model import (
     DEFAULT_ASLEEP_VALUES,
+    DEPART_MAX,
+    KIND_APPOINTMENT,
+    KIND_UNNAMED,
+    LEAVE_BEFORE,
+    LEAVE_LATE,
+    MODE_WORK,
     Episode,
     Params,
     Prediction,
     Shift,
-    DEPART_MAX,
-    KIND_APPOINTMENT,
-    LEAVE_BEFORE,
-    LEAVE_LATE,
-    KIND_UNNAMED,
-    MODE_WORK,
     SleepDetector,
     classify,
     combine,
@@ -100,6 +108,13 @@ MISSING_CALENDAR_GRACE = timedelta(minutes=15)
 HISTORY_VERSION = 2
 
 type BedtimeConfigEntry = ConfigEntry[BedtimeCoordinator]
+
+
+def _first_name(entry: ConfigEntry) -> str:
+    """Whose events count: stored at setup, so renaming the entry changes nothing."""
+    if name := entry.data.get(CONF_FIRST_NAME):
+        return name
+    return entry.title.split()[0] if entry.title else ""
 
 
 def params_from_options(options: dict[str, Any]) -> Params:
@@ -159,6 +174,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self._defer_fetch = False
         self._missing_since: datetime | None = None
         self._shown: tuple[bool, bool] | None = None
+        self._fetch_lock = asyncio.Lock()
         # Shared-calendar events that named nobody: whether this person left for each one,
         # and how often they did (or didn't) for each title and place, to guess the next one.
         self._attributed: dict[str, list[Any]] = {}
@@ -177,15 +193,17 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     @property
     def first_name(self) -> str:
-        return self.config_entry.title.split()[0] if self.config_entry.title else ""
+        return _first_name(self.config_entry)
 
     @property
     def household_names(self) -> list[str]:
         """First names of everyone else set up here, to tell their events from unnamed ones."""
         return [
-            e.title.split()[0]
+            name
             for e in self.hass.config_entries.async_entries(DOMAIN)
-            if e.entry_id != self.config_entry.entry_id and e.title
+            if e.entry_id != self.config_entry.entry_id
+            and e.data.get("kind") != KIND_HOUSEHOLD
+            and (name := _first_name(e))
         ]
 
     @property
@@ -345,6 +363,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     async def _async_run_backfill(self) -> None:
         await self._async_backfill()
+        self._described_for = self._calendar_signature()
         self._save()
         # Departures (for get-ready time) come from presence history, not the bed.
         await self._async_recover_history()
@@ -356,6 +375,10 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             if unsub:
                 unsub()
         self._unsub_detector = self._unsub_next = None
+
+    async def async_flush(self) -> None:
+        """Write now: a reload reads the file before a delayed save would land."""
+        await self._store.async_save(self._data_to_save())
 
     def _save(self) -> None:
         self._store.async_delay_save(self._data_to_save, 10)
@@ -473,11 +496,15 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     def _initial_since(self, on: bool) -> datetime:
         """Best guess at when the current reading began, from the signals' own history."""
-        changed = [
-            state.last_changed
-            for entity_id in self.signals
-            if (state := self.hass.states.get(entity_id)) is not None
+        states = [
+            state for entity_id in self.signals if (state := self.hass.states.get(entity_id))
         ]
+        if on:
+            values = {v.lower() for v in self.asleep_values}
+            states = [
+                s for s in states if s.state == "on" or s.state.lower() in values
+            ] or states
+        changed = [state.last_changed for state in states]
         if not changed:
             return dt_util.utcnow()
         return min(changed) if on else max(changed)
@@ -489,15 +516,19 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             return None
         return guess.bedtime if abs(guess.bedtime - onset) <= MATCH_WINDOW else None
 
-    def _record(self, onset: datetime, wake: datetime, source: str) -> None:
-        predicted = self._night_predicted or self._prediction_for(onset)
+    def _record(
+        self, onset: datetime, wake: datetime, source: str, *, replay: bool = False
+    ) -> None:
+        predicted = None if replay else self._night_predicted or self._prediction_for(onset)
         self.episodes = [
             *self.episodes,
             make_episode(onset, wake, self.shifts, source, predicted),
         ]
         self._forget_old_nights()
-        self.last_wake = wake
-        self.committed = None
+        if self.last_wake is None or wake > self.last_wake:
+            self.last_wake = wake
+        if not replay:
+            self.committed = None
         _LOGGER.debug("%s: recorded sleep %s -> %s", self.config_entry.title, onset, wake)
 
     def _recent_nights(self) -> list[Episode]:
@@ -511,8 +542,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     async def _async_recover_history(self) -> None:
         """Fill in recent nights from the recorder: what was predicted, and when they left."""
-        from homeassistant.components.recorder import get_instance  # noqa: PLC0415
-        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+        from homeassistant.components.recorder import get_instance
+        from homeassistant.helpers import entity_registry as er
 
         recent = self._unchecked_nights()
         if not recent:
@@ -533,7 +564,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             presence = await recorder.async_add_executor_job(
                 self._read_entity_history, self.person, start, dt_util.utcnow()
             )
-        except Exception:  # noqa: BLE001 - best effort
+        except Exception:
             _LOGGER.debug("Could not read history to recover nights", exc_info=True)
             return
 
@@ -609,7 +640,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         return changed
 
     def _read_entity_history(self, entity_id: str, start: datetime, end: datetime) -> list[State]:
-        from homeassistant.components.recorder import history  # noqa: PLC0415
+        from homeassistant.components.recorder import history
 
         return history.state_changes_during_period(
             self.hass, start, end, entity_id=entity_id, no_attributes=True
@@ -691,6 +722,10 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self.hass.async_create_task(self.async_request_refresh())
 
     async def _async_fetch_shifts(self, start: datetime, end: datetime) -> None:
+        async with self._fetch_lock:
+            await self._async_read_calendars(start, end)
+
+    async def _async_read_calendars(self, start: datetime, end: datetime) -> None:
         response = await self.hass.services.async_call(
             "calendar",
             "get_events",
@@ -750,7 +785,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         Returns the start of each one newly settled. Events still to come stay a guess from
         their title and place.
         """
-        from homeassistant.components.recorder import get_instance  # noqa: PLC0415
+        from homeassistant.components.recorder import get_instance
 
         now = dt_util.utcnow()
         due = [
@@ -765,7 +800,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             presence = await get_instance(self.hass).async_add_executor_job(
                 self._read_entity_history, self.person, start, now
             )
-        except Exception:  # noqa: BLE001 - best effort
+        except Exception:
             _LOGGER.debug("Could not read presence to place appointments", exc_info=True)
             presence = []
         changes = sorted((s.last_changed, s.state) for s in presence)
@@ -778,7 +813,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
                 if covered <= shift.start - LEAVE_BEFORE
                 else left_for_from_nights(shift.start, self.episodes)
             )
-            if went is None:
+            if went is None or ident in self._attributed:
                 continue
             self._attributed[ident] = [went, shift.start.isoformat()]
             for k in keys:
@@ -801,13 +836,15 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             or self._last_fetch is None
             or now - self._last_fetch >= CALENDAR_MAX_AGE
         ) and not defer and self._calendars_ready(now):
+            self._calendars_changed = False
             try:
                 await self._async_fetch_shifts(now - timedelta(days=2), now + timedelta(days=3))
                 self._last_fetch = now
-                self._calendars_changed = False
                 self._save()
             except HomeAssistantError as err:
-                if not self.shifts:
+                self._calendars_changed = True
+                if self.data is None and not self.shifts:
+                    # Setup: Home Assistant retries it.
                     raise UpdateFailed(f"Could not read calendars: {err}") from err
                 _LOGGER.warning("Could not read calendars, using cached shifts: %s", err)
                 self._retry_fetch_at = now + CALENDAR_RETRY
@@ -826,8 +863,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         missing = [c for c in self.calendars if self.hass.states.get(c) is None]
         issue_id = f"missing_calendar_{self.config_entry.entry_id}"
         if not missing:
-            if self._missing_since is not None:
-                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
             self._missing_since = None
             return True
         self._missing_since = self._missing_since or now
@@ -840,7 +876,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
                 severity=ir.IssueSeverity.WARNING,
                 translation_key="missing_calendar",
                 translation_placeholders={
-                    "name": self.config_entry.title,
+                    "name": self.first_name,
                     "calendars": ", ".join(missing),
                 },
             )
@@ -946,12 +982,12 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             _LOGGER.warning("Backfill could not read calendars: %s", err)
 
         try:
-            from homeassistant.components.recorder import get_instance  # noqa: PLC0415
+            from homeassistant.components.recorder import get_instance
 
             history = await get_instance(self.hass).async_add_executor_job(
                 self._read_history, start, now
             )
-        except Exception:  # noqa: BLE001 - best effort; learning simply starts from today
+        except Exception:
             _LOGGER.warning("Backfill could not read the recorder", exc_info=True)
             self._announce_backfill()
             return
@@ -969,13 +1005,13 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         sure = False
         for when, entity_id, state in events:
             if on is not None and (done := detector.step(when, on, since, sure, p)):
-                self._record(*done)
+                self._record(*done, replay=True)
             current[entity_id] = state
             new_on, sure, known = self._reading(current.get)
             if known and new_on != on:
                 on, since = new_on, when
         if on is not None and (done := detector.step(now, on, since, sure, p)):
-            self._record(*done)
+            self._record(*done, replay=True)
         self.episodes.sort(key=lambda e: e.onset)
         # Live detection has been running meanwhile; only adopt the replayed state if idle.
         if not self.detector.asleep:
@@ -998,7 +1034,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         )
 
     def _read_history(self, start: datetime, end: datetime) -> dict[str, list[State]]:
-        from homeassistant.components.recorder import history  # noqa: PLC0415
+        from homeassistant.components.recorder import history
 
         out: dict[str, list[State]] = {}
         for entity_id in (*self.signals, self.person):

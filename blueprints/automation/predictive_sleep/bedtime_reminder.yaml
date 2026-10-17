@@ -53,18 +53,21 @@ triggers:
 
 variables:
   within: !input within_hours
-  bedtime: "{{ states(bedtime_entity) | as_datetime }}"
-  shift: "{{ state_attr(bedtime_entity, 'next_shift_start') | as_datetime(none) }}"
+  # Variables render to text, so each template below parses them again.
+  bedtime: "{{ states(bedtime_entity) }}"
+  shift: "{{ state_attr(bedtime_entity, 'next_shift_start') }}"
 
 conditions:
   - condition: template
     value_template: >-
-      {{ shift is not none and shift - bedtime <= timedelta(hours=within | float) }}
+      {% set b = bedtime | as_datetime(none) %}
+      {% set s = shift | as_datetime(none) %}
+      {{ b is not none and s is not none and s - b <= timedelta(hours=within | float) }}
 
 actions:
   - action: !input notify_action
     data:
       title: Bedtime soon
       message: >-
-        Aim for bed by {{ as_local(bedtime).strftime('%H:%M') }} for a full night before
-        the {{ as_local(shift).strftime('%H:%M') }} shift.
+        Aim for bed by {{ (bedtime | as_datetime | as_local).strftime('%H:%M') }} for a full night before
+        the {{ (shift | as_datetime | as_local).strftime('%H:%M') }} shift.

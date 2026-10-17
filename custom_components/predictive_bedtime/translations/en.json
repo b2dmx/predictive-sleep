@@ -11,7 +11,7 @@
       },
       "household": {
         "title": "Household sensors",
-        "description": "Adds whole-home sensors: whether everyone home is expected asleep, whether anyone is winding down, and the earliest and latest bedtimes tonight."
+        "description": "Adds sensors for the whole home: when everyone's asleep, when someone's getting ready for bed, and tonight's earliest and latest bedtimes."
       },
       "person": {
         "title": "Who is this for?",
@@ -30,15 +30,15 @@
         "title": "{calendar}",
         "description": "What does {name} use this calendar for?",
         "data": {
-          "content": "This calendar holds"
+          "content": "Holds"
         }
       },
       "signals": {
         "title": "How do we know {name} is in bed?",
-        "description": "Pick at least one.",
+        "description": "Pick a bed sensor, a sleep tracker, or both.",
         "data": {
           "in_bed_signals": "In-bed sensors",
-          "asleep_signals": "Sleep tracker (optional)"
+          "asleep_signals": "Sleep tracker"
         },
         "data_description": {
           "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
@@ -46,7 +46,7 @@
         }
       },
       "habits": {
-        "title": "A starting point",
+        "title": "{name}'s usual routine",
         "description": "Rough guesses are fine. These are learned from {name}'s real nights from here on.",
         "data": {
           "free_bedtime": "Usual bedtime on a night off",
@@ -58,10 +58,10 @@
         "title": "{calendar}",
         "description": "Some events here won't say who they're for, like \"Dentist\".",
         "data": {
-          "unnamed": "Events without a name"
+          "unnamed": "Events that don't mention anyone"
         },
         "data_description": {
-          "unnamed": "Guessing works it out from who leaves home for it, then remembers the title and place for next time."
+          "unnamed": "Guessing checks who leaves home around that time, and remembers the event and place for next time."
         }
       }
     },
@@ -71,7 +71,8 @@
     },
     "abort": {
       "already_configured": "This person is already set up.",
-      "household_exists": "Household sensors are already set up."
+      "household_exists": "Household sensors are already set up.",
+      "already_in_progress": "This is already being set up."
     }
   },
   "options": {
@@ -96,11 +97,11 @@
         "title": "{calendar}",
         "description": "What does {name} use this calendar for?",
         "data": {
-          "content": "This calendar holds",
+          "content": "Holds",
           "words": "Words that mean an event counts"
         },
         "data_description": {
-          "words": "Only used for mixed and shared calendars. Whole words, ignoring case: \"work\" matches \"Work (Sam)\" but not \"Workout\"."
+          "words": "Not used for work calendars. Whole words, ignoring case: \"work\" matches \"Work (Sam)\" but not \"Workout\"."
         }
       },
       "signals": {
@@ -121,9 +122,9 @@
         "description": "Usual bedtime, sleep needed, get-ready and unwind times are learned automatically, so they aren't settings.",
         "data": {
           "pause_entities": "Pause learning when",
-          "pause_states": "…is in one of these states",
+          "pause_states": "Pause when it's in one of these states",
           "notify_service": "After each night, send a note to",
-          "use_sleep_debt": "Account for sleep debt",
+          "use_sleep_debt": "Go to bed earlier after short nights",
           "learning_window_days": "Remember nights for"
         },
         "data_description": {
@@ -145,10 +146,10 @@
         "title": "{calendar}",
         "description": "Some events here won't say who they're for, like \"Dentist\".",
         "data": {
-          "unnamed": "Events without a name"
+          "unnamed": "Events that don't mention anyone"
         },
         "data_description": {
-          "unnamed": "Guessing works it out from who leaves home for it, then remembers the title and place for next time."
+          "unnamed": "Guessing checks who leaves home around that time, and remembers the event and place for next time."
         }
       }
     },
@@ -215,15 +216,15 @@
   "selector": {
     "calendar_content": {
       "options": {
-        "work": "Only work shifts",
-        "mixed": "Work and appointments",
-        "shared": "Shared with others"
+        "work": "Just work shifts",
+        "mixed": "Work and other appointments",
+        "shared": "Several people's events (family calendar)"
       }
     },
     "unnamed": {
       "options": {
-        "guess": "Guess who it's for",
-        "ignore": "Ignore"
+        "guess": "Guess from who leaves home",
+        "ignore": "Skip them"
       }
     }
   },
@@ -241,7 +242,7 @@
   },
   "exceptions": {
     "entry_not_loaded": {
-      "message": "That Predictive Sleep entry is not loaded."
+      "message": "Pick a person's Predictive Sleep entry that is loaded."
     }
   },
   "issues": {

@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import BedtimeConfigEntry, BedtimeCoordinator
 from .entity import BedtimeEntity
-from .household import sensors, is_household
+from .household import is_household, sensors
 from .model import accuracy
 
 

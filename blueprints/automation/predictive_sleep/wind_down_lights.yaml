@@ -2,7 +2,8 @@ blueprint:
   name: Predictive Sleep - Wind-down lighting
   description: >-
     Dims and warms lights when someone starts winding down before their predicted
-    bedtime, and optionally turns them off once they are expected asleep.
+    bedtime, and optionally turns them off once they are expected asleep: when they settle
+    into bed, or at the predicted bedtime if they're still up.
   domain: automation
   source_url: https://github.com/b2dmx/predictive-sleep/blob/main/blueprints/automation/predictive_sleep/wind_down_lights.yaml
   input:
@@ -66,10 +67,12 @@ variables:
 triggers:
   - trigger: state
     entity_id: !input wind_down
+    not_from: [unavailable, unknown]
     to: "on"
     id: wind_down
   - trigger: state
     entity_id: !input expected_asleep
+    not_from: [unavailable, unknown]
     to: "on"
     id: asleep
 

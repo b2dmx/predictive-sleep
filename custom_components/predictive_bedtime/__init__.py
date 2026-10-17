@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import voluptuous as vol
-
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -16,10 +17,12 @@ from .const import (
     CONF_BED_SENSOR,
     CONF_CALENDAR_RULES,
     CONF_CALENDARS,
-    CONF_KEYWORDS,
+    CONF_FIRST_NAME,
     CONF_IN_BED,
+    CONF_KEYWORDS,
     DOMAIN,
     SIGNAL_UPDATED,
+    STORAGE_VERSION,
     TITLE_SUFFIX,
 )
 from .coordinator import BedtimeConfigEntry, BedtimeCoordinator
@@ -69,6 +72,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: BedtimeConfigEntry) -> b
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: BedtimeConfigEntry) -> bool:
+    if entry.version > 7:
+        # Made by a newer release: its settings can't be read safely.
+        return False
     if entry.version == 1:
         # One bed sensor became lists of in-bed signals and sleep trackers.
         options = dict(entry.options)
@@ -102,13 +108,27 @@ async def async_migrate_entry(hass: HomeAssistant, entry: BedtimeConfigEntry) ->
             for calendar in options.get(CONF_CALENDARS, [])
         }
         hass.config_entries.async_update_entry(entry, options=options, version=6)
+    if entry.version == 6:
+        # The first name is stored, so renaming the entry no longer changes whose events count.
+        data = dict(entry.data)
+        if not is_household(entry) and entry.title:
+            data[CONF_FIRST_NAME] = entry.title.split()[0]
+        hass.config_entries.async_update_entry(entry, data=data, version=7)
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: BedtimeConfigEntry) -> None:
+    """A person removed takes their sleep history with them."""
+    ir.async_delete_issue(hass, DOMAIN, f"missing_calendar_{entry.entry_id}")
+    await Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}").async_remove()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BedtimeConfigEntry) -> bool:
     platforms = HOUSEHOLD_PLATFORMS if is_household(entry) else PLATFORMS
     unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unloaded and not is_household(entry):
+        # Write pending changes now: a reload reads the file before a delayed save lands.
+        await entry.runtime_data.async_flush()
         # The person is gone; household sensors recompute without them.
         hass.loop.call_soon(async_dispatcher_send, hass, SIGNAL_UPDATED)
     return unloaded

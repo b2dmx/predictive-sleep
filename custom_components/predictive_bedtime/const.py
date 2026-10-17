@@ -10,6 +10,8 @@ HOUSEHOLD_TITLE = "Household Predictive Sleep"
 SIGNAL_UPDATED = "predictive_bedtime_updated"
 
 CONF_PERSON = "person"
+# Whose events count on shared calendars; kept apart from the title, which users can rename.
+CONF_FIRST_NAME = "first_name"
 CONF_CALENDARS = "calendars"
 # Only events whose title contains one of these words count as shifts; empty = all.
 CONF_KEYWORDS = "shift_keywords"

@@ -78,9 +78,9 @@ The [`dashboards`](dashboards) folder has the same card three ways: [built-in ca
 ## Requirements
 
 - One or more **calendars**. Each is read its own way, chosen during setup:
-  - **Only work shifts:** every timed event is a shift (a dedicated work calendar).
-  - **Work and other events:** only events whose title or description mentions a wake-up word count: work, shift, school, class, appointment, doctor, dentist, therapy, meeting, interview, flight, exam and so on (editable). Birthdays, holidays and anything else are ignored. Work events shape the sleep pattern; the rest are appointments that only set how early the person must be up.
-  - **Only events that mention the person:** for calendars shared with others, e.g. "Sam dentist" counts for Sam but not for Alex. Home Assistant can't see who created an event, so the name stands in for it. Events that name nobody ("Dentist") can be ignored or guessed: whoever left home for one is who it was for, and its title and place are remembered so the next one is predicted ahead of time.
+  - **Just work shifts:** every timed event is a shift (a dedicated work calendar).
+  - **Work and other appointments:** only events whose title or description mentions a wake-up word count: work, shift, school, class, appointment, doctor, dentist, therapy, meeting, interview, flight, exam and so on (editable). Birthdays, holidays and anything else are ignored. Work events shape the sleep pattern; the rest are appointments that only set how early the person must be up.
+  - **Several people's events (family calendar):** e.g. "Sam dentist" counts for Sam but not for Alex. Home Assistant can't see who created an event, so the name stands in for it. Events that don't mention anyone ("Dentist") can be skipped, or guessed from who leaves home: whoever left home for one is who it was for, and its title and place are remembered so the next one is predicted ahead of time.
 
   Matching is whole-word and ignores case, so `work` matches "Work (Sam)" but not "Workout". All-day events are always ignored.
 - At least one **sleep signal** per person, and a **person** entity:
@@ -116,7 +116,7 @@ Everything else is optional and lives under **Configure**:
 
 | Page | Settings (defaults) |
 |---|---|
-| Calendars | Calendars and what each holds; the words that make an event count on mixed and shared calendars |
+| Calendars | Calendars and what each holds; the words that make an event count; for family calendars, whether to guess events that don't mention anyone |
 | Sleep signals | In-bed sensors, sleep trackers, tracker states that mean asleep |
 | Learning | Pause learning when (none) / in states (on, Guest, Vacation, Away); a note after each night (off); sleep debt (off); remember nights for (365 days) |
 | Timing | Wind-down (60 min before bedtime); in bed 20 min counts as going to sleep; out of bed 30 min counts as awake; shortest night 3 h |
@@ -131,4 +131,4 @@ MIT
 
 ---
 
-<p align="center">Predictive Sleep by Goobis<br>AI was used to help develop this integration.</p>
+<p align="center">Predictive Sleep v0.12.0 by Goobis<br>AI was used to help develop this integration.</p>

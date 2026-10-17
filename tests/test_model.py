@@ -1,10 +1,10 @@
 ﻿"""Model tests. Run: py -3 tests/test_model.py (or pytest)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import importlib.util
-from pathlib import Path
 import sys
+from datetime import datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 # Load model.py directly so Home Assistant is not needed.
@@ -380,11 +380,11 @@ GUESS = {"mode": "mixed", "words": ["dentist"], "require_name": True, "unnamed":
 
 
 def test_shared_guess_marks_events_that_name_nobody():
-    assert model.classify("Heart Echo", None, GUESS, "Sam", ["Alex"]) == model.KIND_UNNAMED
+    assert model.classify("Checkup", None, GUESS, "Sam", ["Alex"]) == model.KIND_UNNAMED
     assert model.classify("Alex dentist", None, GUESS, "Sam", ["Alex"]) is None
     assert model.classify("Sam dentist", None, GUESS, "Sam", ["Alex"]) == model.KIND_APPOINTMENT
     ignore = {**GUESS, "unnamed": "ignore"}
-    assert model.classify("Heart Echo", None, ignore, "Sam", ["Alex"]) is None
+    assert model.classify("Checkup", None, ignore, "Sam", ["Alex"]) is None
 
 
 def test_left_for_an_appointment():
@@ -406,3 +406,67 @@ def test_unnamed_appointments_are_guessed_from_past_ones():
     assert model.event_keys("Dentist", None) == ["title:dentist"]
     assert model.is_theirs(model.event_keys("Dentist", "Oberlin Ave Dental"), owners)
     assert not model.is_theirs(model.event_keys("Haircut", None), owners)
+
+
+NIGHTS = [shift(14, 23, 7), shift(15, 23, 7)]
+
+
+def test_night_shift_sleep_is_today_not_tomorrow():
+    # During the shift and on getting home, the next sleep is this morning after unwinding.
+    for start in (at(15, 3), at(15, 7)):
+        assert local(model.schedule_bedtime(start, NIGHTS, P, TZ)) == "15 08:30"
+    # The last shift of a run too: no 16-hour day after a night at work.
+    pred = model.predict(at(16, 7), at(16, 7), NIGHTS, [], P, TZ)
+    assert local(pred.bedtime).startswith("16 08:"), local(pred.bedtime)
+
+
+def test_wake_never_comes_before_bedtime():
+    redeye = model.Shift(at(15, 0, 30), at(15, 6), model.KIND_APPOINTMENT)
+    pred = model.predict(at(14, 23, 30), at(14, 23, 30), [redeye], [], P, TZ)
+    assert pred.wake > pred.bedtime
+    assert not model.at_work(pred.bedtime, [redeye])
+    short = [model.Shift(at(14, 23, 50), at(14, 23, 59), model.KIND_APPOINTMENT), shift(15, 9, 17)]
+    pred = model.predict(at(14, 23), at(14, 23), short, [], P, TZ)
+    assert pred.wake > pred.bedtime
+
+
+def test_never_predicts_sleep_during_work():
+    long = [model.Shift(at(20, 8), at(22, 8))]
+    pred = model.predict(at(20, 10), at(20, 10), long, [], P, TZ)
+    assert not model.at_work(pred.bedtime, long), local(pred.bedtime)
+
+
+def test_get_ready_is_for_the_morning_not_an_evening_event():
+    shifts, nights = [], []
+    for d in range(1, 21):
+        s = model.Shift(at(d, 7), at(d, 15))
+        shifts.append(s)
+        wake = s.start - timedelta(minutes=40)
+        nights.append(model.make_episode(wake - timedelta(hours=8), wake, shifts))
+    nights = [model.Episode(**{**e.__dict__, "left_home": e.wake + timedelta(minutes=30)}) for e in nights]
+    morning = model.Shift(at(22, 7), at(22, 15))
+    alone = model.predict(at(21, 16), at(21, 16), [*shifts, morning], nights, P, TZ)
+    evening = model.Shift(at(21, 18), at(21, 19), model.KIND_APPOINTMENT)
+    both = model.predict(at(21, 16), at(21, 16), [*shifts, evening, morning], nights, P, TZ)
+    assert both.prep == alone.prep
+
+
+def test_custom_work_phrases_are_work():
+    rule = {"mode": "mixed", "words": ["night shift", "dentist"]}
+    assert model.classify("Night shift", None, rule, "Sam") == model.KIND_WORK
+    mixed = {"mode": "mixed"}
+    assert model.classify("On call", None, mixed, "Sam") == model.KIND_WORK
+    assert model.classify("Overtime", None, mixed, "Sam") == model.KIND_WORK
+
+
+def test_event_keys_ignore_times_and_ordinals():
+    assert model.event_keys("Dentist 10am", None) == ["title:dentist"]
+    assert model.event_keys("Dentist - 2nd visit", None) == ["title:dentist visit"]
+
+
+def test_left_for_from_stored_nights():
+    start = at(30, 9)
+    e = model.make_episode(at(29, 23), at(30, 7, 50), [])
+    gone = model.Episode(**{**e.__dict__, "left_home": at(30, 8, 30)})
+    assert model.left_for_from_nights(start, [gone]) is True
+    assert model.left_for_from_nights(start, [e]) is None

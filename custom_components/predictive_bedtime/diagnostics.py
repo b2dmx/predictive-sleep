@@ -4,11 +4,32 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .coordinator import BedtimeConfigEntry, BedtimeCoordinator
 from .model import accuracy, is_free_night, is_get_ready_morning, learn
+
+# Diagnostics get pasted into public issues: no entity ids, names or words from the home.
+TO_REDACT = {
+    "calendars",
+    "in_bed_signals",
+    "asleep_signals",
+    "pause_entities",
+    "pause_states",
+    "notify_service",
+    "shift_keywords",
+}
+
+
+def _options(options: dict[str, Any]) -> dict[str, Any]:
+    redacted = async_redact_data(dict(options), TO_REDACT)
+    rules = options.get("calendar_rules") or {}
+    redacted["calendar_rules"] = [
+        {k: v for k, v in rule.items() if k != "words"} for rule in rules.values()
+    ]
+    return redacted
 
 
 def _local(value: datetime | None) -> str | None:
@@ -24,7 +45,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     coordinator = getattr(entry, "runtime_data", None)
     if not isinstance(coordinator, BedtimeCoordinator):
-        return {"kind": entry.data.get("kind"), "options": dict(entry.options)}
+        return {"kind": entry.data.get("kind"), "options": _options(entry.options)}
 
     now = dt_util.utcnow()
     p = coordinator.params
@@ -43,7 +64,9 @@ async def async_get_config_entry_diagnostics(
                 "source": e.source,
                 "previous_shift_ended": _local(e.prev_end),
                 "next_commitment": _local(e.next_start),
-                "left_home": _local(e.left_home),
+                "left_home_min_after_waking": (
+                    _minutes(e.left_home - e.wake) if e.left_home else None
+                ),
                 "counts_for_get_ready": is_get_ready_morning(e),
                 "free_night": is_free_night(e),
                 "wake_to_next_commitment_min": (
@@ -55,7 +78,7 @@ async def async_get_config_entry_diagnostics(
         )
 
     return {
-        "options": dict(entry.options),
+        "options": _options(entry.options),
         "learning": {
             "enabled": coordinator.learning_enabled,
             "paused_by": coordinator.paused_by,

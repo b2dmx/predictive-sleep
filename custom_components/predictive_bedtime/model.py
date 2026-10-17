@@ -14,11 +14,11 @@ never-seen-before schedules still produce a sensible answer. The best-scoring ti
 """
 from __future__ import annotations
 
+import math
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, time, timedelta, tzinfo
-import math
-import re
 from typing import Any
 
 # Anything further away than this counts as "no shift nearby".
@@ -71,6 +71,8 @@ DEFAULT_WAKE_WORDS = (
     "flight",
     "exam",
     "court",
+    "on call",
+    "overtime",
 )
 
 # Where a recorded night came from.
@@ -262,7 +264,7 @@ def classify(
     found = mentions(text, rule.get("words") or DEFAULT_WAKE_WORDS)
     if not found:
         return None
-    return KIND_WORK if any(w.lower() in WORK_WORDS for w in found) else KIND_APPOINTMENT
+    return KIND_WORK if mentions(text, WORK_WORDS) else KIND_APPOINTMENT
 
 
 def neighbours(t: datetime, shifts: Iterable[Shift]) -> tuple[Shift | None, Shift | None]:
@@ -330,19 +332,24 @@ def schedule_bedtime(start: datetime, shifts: Sequence[Shift], p: Params, tz: tz
     Start from the usual free-day bedtime, push it past any shift plus unwind time, then
     pull it earlier if that would not leave a full night before the next shift.
     """
+    ordered = sorted(shifts, key=lambda s: s.start)
+
+    def past_shifts(t: datetime) -> datetime:
+        for s in ordered:
+            after = s.end + (p.unwind if s.kind == KIND_WORK else timedelta())
+            if s.start <= t < after:
+                t = after
+        return t
+
+    # Last night's bedtime still counts when a night shift pushed it into today.
     local = start.astimezone(tz)
-    anchor = local
+    anchor = start
     for days in (-1, 0, 1):
         candidate = datetime.combine(local.date() + timedelta(days=days), p.free_bedtime, tzinfo=tz)
-        if candidate >= local - timedelta(hours=3):
+        candidate = past_shifts(candidate.astimezone(UTC))
+        if candidate >= start - timedelta(hours=3):
             anchor = candidate
             break
-    anchor = anchor.astimezone(UTC)
-
-    for s in sorted(shifts, key=lambda s: s.start):
-        after = s.end + (p.unwind if s.kind == KIND_WORK else timedelta())
-        if s.start <= anchor < after:
-            anchor = after
 
     prev, nxt = neighbours(anchor, shifts)
     if nxt:
@@ -433,7 +440,8 @@ def left_for_from_nights(start: datetime, episodes: Sequence[Episode]) -> bool |
 def event_keys(summary: str | None, location: str | None) -> list[str]:
     """What identifies a recurring appointment: its title and where it is."""
     keys = []
-    title = " ".join(re.sub(r"\d+", " ", summary or "").lower().split())
+    title = re.sub(r"\d+(?:st|nd|rd|th|am|pm)?\b", " ", (summary or "").lower())
+    title = " ".join(re.sub(r"[^\w\s]", " ", title).split())
     if title:
         keys.append(f"title:{title}")
     place = " ".join((location or "").split("\n")[0].lower().split())
@@ -610,17 +618,26 @@ def predict(
     # The schedule-based estimate uses the person's learned habits, not the setup values:
     # those are only where learning starts. Get-ready time is for the next thing to be up
     # for, learned from similar start times.
+    setup = p
+
+    def with_habits(upcoming: Shift | None) -> tuple[Learned, Params]:
+        habits = learn(now, episodes, setup, tz, upcoming.start if upcoming else None)
+        minutes = round(habits.usual_bedtime * 60) % (24 * 60)
+        return habits, replace(
+            setup,
+            prep=habits.prep,
+            target_sleep=habits.target_sleep,
+            unwind=habits.unwind,
+            free_bedtime=time(minutes // 60, minutes % 60),
+        )
+
     _, upcoming = neighbours(start, shifts)
-    habits = learn(now, episodes, p, tz, upcoming.start if upcoming else None)
-    minutes = round(habits.usual_bedtime * 60) % (24 * 60)
-    p = replace(
-        p,
-        prep=habits.prep,
-        target_sleep=habits.target_sleep,
-        unwind=habits.unwind,
-        free_bedtime=time(minutes // 60, minutes % 60),
-    )
+    habits, p = with_habits(upcoming)
     rule = schedule_bedtime(start, shifts, p, tz)
+    _, after_night = neighbours(rule, shifts)
+    if after_night != upcoming:
+        habits, p = with_habits(after_night)
+        rule = schedule_bedtime(start, shifts, p, tz)
 
     # (until next shift, since last shift, clock, debt, hours slept, weight)
     learned: list[tuple[float, float, float, float, float, float]] = []
@@ -659,15 +676,32 @@ def predict(
         math.ceil(start.timestamp() / STEP.total_seconds()) * STEP.total_seconds(), UTC
     )
     best_score, best_t, best_mass = -1.0, start, 0.0
-    end = min(start + LOOKAHEAD, max(rule, start) + NIGHT_SPAN)
+    # A schedule bedtime already behind (after a daytime sleep, say) says less about when
+    # the next sleep comes, so look further.
+    end = rule + NIGHT_SPAN if rule >= start else start + 2 * NIGHT_SPAN
+    for s in sorted(shifts, key=lambda s: s.start):
+        if s.start <= end and s.end > start:
+            end = max(end, s.end + NIGHT_SPAN)
+    end = min(end, start + LOOKAHEAD)
+
+    def room_to_sleep(t: datetime) -> bool:
+        _, nxt = neighbours(t, shifts)
+        return nxt is None or nxt.start - p.prep - t >= p.min_sleep
+
     t = start
     while t <= end:
-        if not at_work(t, shifts):
+        if not at_work(t, shifts) and room_to_sleep(t):
             mass = sum(similarity(t))
             prior = PRIOR_WEIGHT * math.exp(-0.5 * (_hours(t - rule) / SIGMA_RULE) ** 2)
             if mass + prior > best_score:
                 best_score, best_t, best_mass = mass + prior, t, mass
         t += STEP
+    if best_score < 0:
+        # Nothing fits (a commitment longer than the search): the first free moment.
+        t = start
+        while at_work(t, shifts) and t < start + 2 * LOOKAHEAD:
+            t += STEP
+        best_t = t
 
     # Expected length: how long similar nights lasted, pulled toward the target while
     # there is little to go on. A shift still sets the latest possible wake.
@@ -679,7 +713,7 @@ def predict(
     wake = best_t + timedelta(hours=hours)
     prev, nxt = neighbours(best_t, shifts)
     if nxt:
-        wake = min(wake, nxt.start - p.prep)
+        wake = max(min(wake, nxt.start - p.prep), best_t)
     return Prediction(
         bedtime=best_t,
         wake=wake,
