@@ -81,7 +81,7 @@ async def async_get_config_entry_diagnostics(
         "options": _options(entry.options),
         "learning": {
             "enabled": coordinator.learning_enabled,
-            "paused_by": coordinator.paused_by,
+            "paused": coordinator.paused_by is not None,
             "nights": len(coordinator.episodes),
             "habits": {
                 "usual_bedtime": {"setup": p.free_bedtime.strftime("%H:%M"), "learned": usual, "nights": habits.free_nights},

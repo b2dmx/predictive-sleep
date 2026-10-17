@@ -470,3 +470,23 @@ def test_left_for_from_stored_nights():
     gone = model.Episode(**{**e.__dict__, "left_home": at(30, 8, 30)})
     assert model.left_for_from_nights(start, [gone]) is True
     assert model.left_for_from_nights(start, [e]) is None
+
+
+def test_quick_turnaround_still_sleeps_tonight():
+    # 15-22 then 03:00: a short night tonight, not a sleep after the next shift.
+    shifts = [shift(14, 15, 22), model.Shift(at(15, 3), at(15, 11))]
+    pred = model.predict(at(14, 23, 10), at(14, 23, 10), shifts, [], P, TZ)
+    assert local(pred.bedtime).startswith("14 23:"), local(pred.bedtime)
+
+
+def test_tomorrows_nap_does_not_replace_tonight():
+    # Early shifts with a nap after each: at 21:30, tonight's sleep, not tomorrow's nap.
+    shifts, nights = [], []
+    for d in range(1, 9):
+        s = model.Shift(at(d, 4), at(d, 12))
+        shifts.append(s)
+        nights.append(model.make_episode(at(d - 1, 20, 30) if d > 1 else at(1, 0), s.start - timedelta(hours=1), shifts))
+        nights.append(model.make_episode(at(d, 13), at(d, 16), shifts))
+    tomorrow = model.Shift(at(10, 4), at(10, 12))
+    pred = model.predict(at(9, 21, 30), at(9, 21, 30), [*shifts, tomorrow], nights, P, TZ)
+    assert pred.bedtime < tomorrow.start, local(pred.bedtime)

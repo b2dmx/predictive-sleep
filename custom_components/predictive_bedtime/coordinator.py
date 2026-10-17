@@ -362,8 +362,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             await self._async_recover_history()
 
     async def _async_run_backfill(self) -> None:
-        await self._async_backfill()
-        self._described_for = self._calendar_signature()
+        if await self._async_backfill():
+            self._described_for = self._calendar_signature()
         self._save()
         # Departures (for get-ready time) come from presence history, not the bed.
         await self._async_recover_history()
@@ -971,13 +971,16 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     # --- one-off head start from the recorder --------------------------
 
-    async def _async_backfill(self) -> None:
+    async def _async_backfill(self) -> bool:
+        """Replay sleep history; True if the calendars were read to describe it."""
         now = dt_util.utcnow()
+        described = False
         start = now - timedelta(days=BACKFILL_DAYS)
         try:
             await self._async_fetch_shifts(start - timedelta(days=2), now + timedelta(days=3))
             self._last_fetch = now
             self._calendars_changed = False
+            described = True
         except HomeAssistantError as err:
             _LOGGER.warning("Backfill could not read calendars: %s", err)
 
@@ -990,7 +993,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         except Exception:
             _LOGGER.warning("Backfill could not read the recorder", exc_info=True)
             self._announce_backfill()
-            return
+            return described
 
         events = sorted(
             (state.last_changed, entity_id, state.state)
@@ -1017,6 +1020,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         if not self.detector.asleep:
             self.detector = detector
         self._announce_backfill()
+        return described
 
     def _announce_backfill(self) -> None:
         count = len(self.episodes)

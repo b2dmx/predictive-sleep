@@ -679,8 +679,9 @@ def predict(
     # A schedule bedtime already behind (after a daytime sleep, say) says less about when
     # the next sleep comes, so look further.
     end = rule + NIGHT_SPAN if rule >= start else start + 2 * NIGHT_SPAN
-    for s in sorted(shifts, key=lambda s: s.start):
-        if s.start <= end and s.end > start:
+    # Already at a commitment: the sleep comes after it.
+    for s in shifts:
+        if s.start <= start < s.end:
             end = max(end, s.end + NIGHT_SPAN)
     end = min(end, start + LOOKAHEAD)
 
@@ -690,7 +691,9 @@ def predict(
 
     t = start
     while t <= end:
-        if not at_work(t, shifts) and room_to_sleep(t):
+        # Up to the schedule bedtime a short night still counts (a quick turnaround);
+        # later, a sleep needs room before the next commitment.
+        if not at_work(t, shifts) and (t <= rule or room_to_sleep(t)):
             mass = sum(similarity(t))
             prior = PRIOR_WEIGHT * math.exp(-0.5 * (_hours(t - rule) / SIGMA_RULE) ** 2)
             if mass + prior > best_score:
