@@ -211,6 +211,11 @@
       "forget_last_night": {
         "name": "Forget last sleep"
       }
+    },
+    "select": {
+      "skip_night": {
+        "name": "Skip a night"
+      }
     }
   },
   "selector": {

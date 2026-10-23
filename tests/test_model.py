@@ -490,3 +490,46 @@ def test_tomorrows_nap_does_not_replace_tonight():
     tomorrow = model.Shift(at(10, 4), at(10, 12))
     pred = model.predict(at(9, 21, 30), at(9, 21, 30), [*shifts, tomorrow], nights, P, TZ)
     assert pred.bedtime < tomorrow.start, local(pred.bedtime)
+
+
+def _replay(changes, until):
+    """Feed (time, on) changes to a detector the way the coordinator does."""
+    d = model.SleepDetector()
+    on, since, done = None, None, []
+    for when, value in changes:
+        if on is not None and (r := d.step(when, on, since, False, P)):
+            done.append(r)
+        on, since = value, when
+        if r := d.step(when, on, since, False, P):
+            done.append(r)
+    if r := d.step(until, on, since, False, P):
+        done.append(r)
+    return d, done
+
+
+def test_brief_dropouts_do_not_restart_settling():
+    # In at 23:46, two sub-minute dropouts, then asleep: bedtime is 23:46, not 00:02.
+    changes = [
+        (at(17, 23, 46), True), (at(17, 23, 57), False), (at(17, 23, 58), True),
+        (at(18, 0, 1), False), (at(18, 0, 2), True), (at(18, 7), False),
+    ]
+    _, done = _replay(changes, at(18, 8))
+    assert len(done) == 1 and local(done[0][0]) == "17 23:46", done
+
+
+def test_a_real_break_still_restarts_settling():
+    # Up for 10 minutes: the night starts when they came back.
+    changes = [(at(17, 23), True), (at(17, 23, 10), False), (at(17, 23, 20), True), (at(18, 7), False)]
+    _, done = _replay(changes, at(18, 8))
+    assert local(done[0][0]) == "17 23:20", done
+
+
+def test_detector_settling_survives_a_restart():
+    d = model.SleepDetector()
+    d.step(at(17, 23, 46), True, at(17, 23, 46), False, P)
+    d.step(at(17, 23, 57), False, at(17, 23, 57), False, P)
+    restored = model.SleepDetector()
+    restored.restore(d.as_dict())
+    restored.step(at(17, 23, 58), True, at(17, 23, 58), False, P)
+    restored.step(at(18, 0, 10), True, at(17, 23, 58), False, P)
+    assert restored.asleep and local(restored.onset) == "17 23:46"

@@ -755,26 +755,48 @@ def combine(
     return sure or in_bed_on, sure, True
 
 
+# Out of bed this briefly while settling (shifting, a dropout) doesn't restart the clock.
+SETTLE_GAP = timedelta(minutes=5)
+
+
 class SleepDetector:
     """Turns noisy sleep signals into nights.
 
     Fed the combined reading from `combine`. A night starts when the reading has been on
     for `settle` (in-bed signals) or immediately (a tracker reporting sleep); its onset is
-    when that stretch began. It ends once the reading has been off for `wake_gap`; the
-    wake time is when it went off. Short sleeps (naps) and implausibly long ones are dropped.
+    when that stretch began, bridging gaps of up to SETTLE_GAP. It ends once the reading
+    has been off for `wake_gap`; the wake time is when it went off. Short sleeps (naps) and
+    implausibly long ones are dropped.
     """
 
     def __init__(self) -> None:
         self.asleep = False
         self.onset: datetime | None = None
         self.tracked = False
+        # The in-bed stretch being settled into, and when it last dropped out.
+        self.run_start: datetime | None = None
+        self.on_since: datetime | None = None
+        self.left_at: datetime | None = None
 
     def step(
         self, now: datetime, on: bool, since: datetime, sure: bool, p: Params
     ) -> tuple[datetime, datetime, str] | None:
         if not self.asleep:
-            if on and (sure or now - since >= p.settle):
-                self.asleep, self.onset, self.tracked = True, since, sure
+            if not on:
+                if self.run_start is not None and self.left_at is None:
+                    self.left_at = since
+                return None
+            if self.run_start is None:
+                self.run_start = since
+            elif since != self.on_since:
+                # Back in bed: the same stretch if the dropout was brief.
+                brief = self.left_at is not None and since - self.left_at <= SETTLE_GAP
+                if not brief:
+                    self.run_start = since
+            self.on_since, self.left_at = since, None
+            if sure or now - self.run_start >= p.settle:
+                self.asleep, self.onset, self.tracked = True, self.run_start, sure
+                self.run_start = None
             return None
 
         self.tracked = self.tracked or sure
@@ -788,9 +810,19 @@ class SleepDetector:
         return onset, wake, source
 
     def as_dict(self) -> dict[str, Any]:
-        return {"asleep": self.asleep, "onset": _iso(self.onset), "tracked": self.tracked}
+        return {
+            "asleep": self.asleep,
+            "onset": _iso(self.onset),
+            "tracked": self.tracked,
+            "run_start": _iso(self.run_start),
+            "on_since": _iso(self.on_since),
+            "left_at": _iso(self.left_at),
+        }
 
     def restore(self, data: dict[str, Any]) -> None:
         self.asleep = bool(data.get("asleep"))
         self.onset = _parse(data.get("onset"))
         self.tracked = bool(data.get("tracked"))
+        self.run_start = _parse(data.get("run_start"))
+        self.on_since = _parse(data.get("on_since"))
+        self.left_at = _parse(data.get("left_at"))

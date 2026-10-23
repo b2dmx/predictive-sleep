@@ -29,7 +29,13 @@ from .coordinator import BedtimeConfigEntry, BedtimeCoordinator
 from .household import is_household
 from .model import DEFAULT_ASLEEP_VALUES, MODE_MIXED, MODE_WORK
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 HOUSEHOLD_PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)

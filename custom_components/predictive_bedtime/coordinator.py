@@ -467,7 +467,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         # Check again the moment a pending stretch would cross its threshold.
         due: datetime | None = None
         if not self.detector.asleep and on and not sure:
-            due = since + p.settle
+            due = (self.detector.run_start or since) + p.settle
         elif self.detector.asleep and not on:
             due = since + p.wake_gap
         elif self.detector.asleep and not self.sleep_attempt and self.detector.onset:

@@ -64,6 +64,11 @@
       "forget_last_night": {
         "default": "mdi:delete-clock"
       }
+    },
+    "select": {
+      "skip_night": {
+        "default": "mdi:calendar-remove"
+      }
     }
   },
   "services": {
