@@ -533,3 +533,17 @@ def test_detector_settling_survives_a_restart():
     restored.step(at(17, 23, 58), True, at(17, 23, 58), False, P)
     restored.step(at(18, 0, 10), True, at(17, 23, 58), False, P)
     assert restored.asleep and local(restored.onset) == "17 23:46"
+
+
+def test_no_calendar_and_no_history_uses_usual_bedtime():
+    pred = model.predict(at(20, 12), at(20, 12), [], [], P, TZ)
+    assert local(pred.bedtime) == "20 23:30"
+    assert pred.wake > pred.bedtime
+
+
+def test_in_bed_switch_counts_like_a_tracker():
+    # The switch is passed as one more tracker: on is sure; off with no sensors means up.
+    assert model.combine(["on"], [], True, VALUES) == (True, True, True)
+    assert model.combine(["off"], [], True, VALUES) == (False, False, True)
+    # With sensors, an off switch is left out (None) so a dropout isn't read as waking.
+    assert model.combine([None], ["unavailable"], True, VALUES)[2] is False

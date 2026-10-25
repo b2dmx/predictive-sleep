@@ -58,6 +58,12 @@
         "state": {
           "off": "mdi:school-outline"
         }
+      },
+      "in_bed": {
+        "default": "mdi:bed-empty",
+        "state": {
+          "on": "mdi:bed"
+        }
       }
     },
     "button": {

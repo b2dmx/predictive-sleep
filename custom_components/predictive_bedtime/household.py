@@ -26,6 +26,7 @@ from homeassistant.helpers.entity import Entity, EntityDescription
 
 from .const import DOMAIN, KIND_HOUSEHOLD, SIGNAL_UPDATED
 from .coordinator import BedtimeCoordinator
+from .entity import pin_entity_id
 
 
 def is_household(entry: ConfigEntry) -> bool:
@@ -53,6 +54,7 @@ class HouseholdEntity(Entity):
             name=entry.title,
             entry_type=DeviceEntryType.SERVICE,
         )
+        pin_entity_id(self, entry.title, description.key)
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(

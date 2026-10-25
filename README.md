@@ -29,6 +29,7 @@ It is built for irregular and rotating work schedules. It reads each person's wo
 | Last wake-up | When it ended. |
 | Last sleep duration | Its length in hours, kept as long-term statistics for graphs. |
 | Prediction error | Average minutes between predicted and actual bedtime over the last 14 sleeps. Lower is better. Diagnostic. |
+| In bed for the night (switch) | For anyone without a bed sensor or tracker: on when going to bed, off when getting up. Counts like a tracker, so it also confirms a sensor. Turns itself off on leaving home. |
 | Learning (switch) | Turn off to stop learning by hand. Attributes show whether learning is active right now and what paused it. |
 | Forget last sleep (button) | Removes the most recent sleep from learning. |
 | Skip a night (select) | Pick any night from the past week to leave out of learning, e.g. a bad sensor reading. |
@@ -78,13 +79,13 @@ The [`dashboards`](dashboards) folder has the same card three ways: [built-in ca
 
 ## Requirements
 
-- One or more **calendars**. Each is read its own way, chosen during setup:
+- Optionally, one or more **calendars**. Without any, every night is a free night and bedtimes are learned from habit alone. Each calendar is read its own way, chosen during setup:
   - **Just work shifts:** every timed event is a shift (a dedicated work calendar).
   - **Work and other appointments:** only events whose title or description mentions a wake-up word count: work, shift, school, class, appointment, doctor, dentist, therapy, meeting, interview, flight, exam and so on (editable). Birthdays, holidays and anything else are ignored. Work events shape the sleep pattern; the rest are appointments that only set how early the person must be up.
   - **Several people's events (family calendar):** e.g. "Sam dentist" counts for Sam but not for Alex. Home Assistant can't see who created an event, so the name stands in for it. Events that don't mention anyone ("Dentist") can be skipped, or guessed from who leaves home: whoever left home for one is who it was for, and its title and place are remembered so the next one is predicted ahead of time.
 
   Matching is whole-word and ignores case, so `work` matches "Work (Sam)" but not "Workout". All-day events are always ignored.
-- At least one **sleep signal** per person, and a **person** entity:
+- A **person** entity, and ideally a **sleep signal**. Without one, use the **In bed for the night** switch each night.
 
 | Signal | Examples | Treated as |
 |---|---|---|
@@ -111,7 +112,7 @@ Copy `custom_components/predictive_bedtime` into your `config/custom_components`
 
 ## Setup and settings
 
-Setup takes a minute: the person, their calendars (and, for each, whether it holds only work shifts, work and appointments, or is shared with others), how to tell they're in bed, and a starting point for their usual bedtime, sleep needed and get-ready time. Those three are learned from real nights from then on, so they aren't settings.
+Setup takes a minute: the person, their calendars if any (and, for each, whether it holds only work shifts, work and appointments, or is shared with others), how to tell they're in bed, and a starting point for their usual bedtime, sleep needed and get-ready time. Those three are learned from real nights from then on, so they aren't settings.
 
 Everything else is optional and lives under **Configure**:
 
@@ -132,4 +133,4 @@ MIT
 
 ---
 
-<p align="center">Predictive Sleep v0.13.0 by Goobis<br>AI was used to help develop this integration.</p>
+<p align="center">Predictive Sleep v0.14.0 by Goobis<br>AI was used to help develop this integration.</p>

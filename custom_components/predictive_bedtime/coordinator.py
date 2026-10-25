@@ -75,6 +75,7 @@ from .model import (
     KIND_UNNAMED,
     LEAVE_BEFORE,
     LEAVE_LATE,
+    MAX_SLEEP,
     MODE_WORK,
     Episode,
     Params,
@@ -181,6 +182,9 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self._owners: dict[str, list[int]] = {}
         # The calendars and rules stored nights were last described with.
         self._described_for: str | None = None
+        # The In bed for the night switch, and when it was turned on.
+        self.manual_in_bed = False
+        self._manual_since: datetime | None = None
 
     # --- configuration -------------------------------------------------
 
@@ -259,10 +263,15 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
     def signals(self) -> list[str]:
         return [*self.in_bed_signals, *self.asleep_signals]
 
-    def _reading(self, state_of: Callable[[str], str | None]) -> tuple[bool, bool, bool]:
+    def _reading(
+        self, state_of: Callable[[str], str | None], manual: bool = False
+    ) -> tuple[bool, bool, bool]:
         person = state_of(self.person)
+        # The switch counts like a tracker. Off only says "up" when there's nothing else to
+        # go by: with sensors, they decide, and a sensor dropping out isn't read as waking.
+        switch = "on" if manual else (None if self.signals else "off")
         return combine(
-            (state_of(e) for e in self.asleep_signals),
+            (*(state_of(e) for e in self.asleep_signals), switch),
             (state_of(e) for e in self.in_bed_signals),
             person is None or person == STATE_HOME,
             self.asleep_values,
@@ -270,7 +279,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     @property
     def calendars(self) -> list[str]:
-        return list(self._conf(CONF_CALENDARS))
+        return list(self._conf(CONF_CALENDARS) or [])
 
     @property
     def calendar_rules(self) -> dict[str, dict[str, Any]]:
@@ -312,6 +321,9 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self._attributed = stored.get("attributed", {})
         self._owners = stored.get("owners", {})
         self._described_for = stored.get("described_for")
+        self.manual_in_bed = stored.get("manual_in_bed", False)
+        if stored.get("manual_since"):
+            self._manual_since = dt_util.parse_datetime(stored["manual_since"])
         self._defer_fetch = bool(self.shifts)
 
     @callback
@@ -403,6 +415,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             "attributed": self._attributed,
             "owners": self._owners,
             "described_for": self._described_for,
+            "manual_in_bed": self.manual_in_bed,
+            "manual_since": self._manual_since.isoformat() if self._manual_since else None,
         }
 
     def _forget_old_nights(self) -> None:
@@ -426,11 +440,19 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             return state.state if state else None
 
         self._note_departure()
-        on, sure, known = self._reading(state_of)
+        now = dt_util.utcnow()
+        if self.manual_in_bed and (
+            not self.is_home
+            or (self._manual_since is not None and now - self._manual_since >= MAX_SLEEP)
+        ):
+            # Forgotten in the morning: leaving home (or a day passing) means they're up.
+            self.manual_in_bed, self._manual_since = False, None
+            self._save()
+            self.async_update_listeners()
+        on, sure, known = self._reading(state_of, self.manual_in_bed)
         # Signals dropping off WiFi say nothing about whether anyone is asleep.
         if not known:
             return
-        now = dt_util.utcnow()
         if self._on is None:
             self._on, self._since = on, self._initial_since(on)
         elif on != self._on:
@@ -476,6 +498,9 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             if (guess := self.committed or self.data) is not None:
                 moments.append(guess.bedtime - ATTEMPT_WINDOW)
             due = min(moments)
+        if self.manual_in_bed and self._manual_since is not None:
+            limit = self._manual_since + MAX_SLEEP
+            due = min(due, limit) if due else limit
         if due:
             self._unsub_detector = async_track_point_in_utc_time(
                 self.hass, self._async_evaluate, max(due, now) + timedelta(seconds=1)
@@ -496,6 +521,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     def _initial_since(self, on: bool) -> datetime:
         """Best guess at when the current reading began, from the signals' own history."""
+        if on and self.manual_in_bed and self._manual_since:
+            return self._manual_since
         states = [
             state for entity_id in self.signals if (state := self.hass.states.get(entity_id))
         ]
@@ -655,6 +682,17 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self.async_update_listeners()
 
     @callback
+    def async_set_in_bed(self, on: bool) -> None:
+        """The In bed for the night switch."""
+        if on == self.manual_in_bed:
+            return
+        self.manual_in_bed = on
+        self._manual_since = dt_util.utcnow() if on else None
+        self._save()
+        self._async_evaluate()
+        self.async_update_listeners()
+
+    @callback
     def async_forget_night(self, onset: datetime | None = None) -> bool:
         """Forget the last night, or the night that began at onset."""
         if not self.episodes:
@@ -726,12 +764,17 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             await self._async_read_calendars(start, end)
 
     async def _async_read_calendars(self, start: datetime, end: datetime) -> None:
-        response = await self.hass.services.async_call(
-            "calendar",
-            "get_events",
-            {ATTR_ENTITY_ID: self.calendars, "start_date_time": start, "end_date_time": end},
-            blocking=True,
-            return_response=True,
+        # No calendars: every night is a free night, learned from habit alone.
+        response = (
+            await self.hass.services.async_call(
+                "calendar",
+                "get_events",
+                {ATTR_ENTITY_ID: self.calendars, "start_date_time": start, "end_date_time": end},
+                blocking=True,
+                return_response=True,
+            )
+            if self.calendars
+            else {}
         )
         fresh: set[Shift] = set()
         unnamed: list[tuple[str, Shift, list[str]]] = []
@@ -1024,16 +1067,32 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
 
     def _announce_backfill(self) -> None:
         count = len(self.episodes)
-        name = self.config_entry.title
+        name = self.first_name or self.config_entry.title
         if count:
             found = f"Found **{count} nights** of sleep for {name} in recent history and learned from them."
         else:
             found = f"No past nights were found for {name}, so learning starts tonight."
+        basis = "the calendars and the starting routine" if self.calendars else "the starting routine"
+        steps = [
+            found,
+            (
+                f"Until more nights are learned, predictions follow {basis}. "
+                "**Prediction confidence** rises as it learns."
+            ),
+        ]
+        if not self.signals:
+            steps.append(
+                f"With no sensor picked, turn on **In bed for the night** when {name} goes to bed "
+                "and off on getting up. It also turns off when they leave home."
+            )
+        steps.append(
+            "A night that wasn't typical can be left out with **Skip a night**. "
+            "Settings are under Devices & services → Predictive Sleep → Configure."
+        )
         persistent_notification.async_create(
             self.hass,
-            f"{found}\n\nUntil more nights are learned, predictions follow the work schedule "
-            "and the starting habits. Watch **Prediction confidence** rise as it learns.",
-            title="Predictive Sleep is set up",
+            "\n\n".join(steps),
+            title=f"Predictive Sleep is set up for {name}",
             notification_id=f"{DOMAIN}_{self.config_entry.entry_id}_setup",
         )
 

@@ -21,7 +21,7 @@
       },
       "sources": {
         "title": "{name}'s calendars",
-        "description": "Pick the calendars with things {name} needs to be up for, like work.",
+        "description": "Pick the calendars with things {name} needs to be up for, like work. No calendar? Leave this empty and bedtimes are learned from habit alone.",
         "data": {
           "calendars": "Calendars"
         }
@@ -35,13 +35,13 @@
       },
       "signals": {
         "title": "How do we know {name} is in bed?",
-        "description": "Pick a bed sensor, a sleep tracker, or both.",
+        "description": "Pick a bed sensor, a sleep tracker, or both. Without either, use the In bed for the night switch: on going to bed, off on getting up.",
         "data": {
           "in_bed_signals": "In-bed sensors",
           "asleep_signals": "Sleep tracker"
         },
         "data_description": {
-          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "in_bed_signals": "A bed sensor for {name}'s side that turns on and off, or presence aimed at the bed. Not a number like bed pressure.",
           "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule."
         }
       },
@@ -66,8 +66,8 @@
       }
     },
     "error": {
-      "no_calendars": "Pick at least one calendar.",
-      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
+      "already_configured": "This person is already set up. Pick someone else.",
+      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed."
     },
     "abort": {
       "already_configured": "This person is already set up.",
@@ -88,7 +88,7 @@
       },
       "calendars": {
         "title": "{name}'s calendars",
-        "description": "Pick the calendars with things {name} needs to be up for, like work.",
+        "description": "Pick the calendars with things {name} needs to be up for, like work. No calendar? Leave this empty and bedtimes are learned from habit alone.",
         "data": {
           "calendars": "Calendars"
         }
@@ -112,10 +112,11 @@
           "asleep_states": "Tracker states that mean asleep"
         },
         "data_description": {
-          "in_bed_signals": "A bed sensor for {name}'s side, or presence aimed at the bed.",
+          "in_bed_signals": "A bed sensor for {name}'s side that turns on and off, or presence aimed at the bed. Not a number like bed pressure.",
           "asleep_signals": "Measured sleep, like Sleep as Android or Withings. Not a sleep focus or bedtime schedule.",
           "asleep_states": "Only for trackers that report words instead of on/off."
-        }
+        },
+        "description": "Without any, the In bed for the night switch does the job."
       },
       "learning": {
         "title": "Learning",
@@ -154,8 +155,7 @@
       }
     },
     "error": {
-      "no_calendars": "Pick at least one calendar.",
-      "no_signals": "Pick at least one in-bed sensor or sleep tracker."
+      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed."
     }
   },
   "entity": {
@@ -205,6 +205,9 @@
     "switch": {
       "learning": {
         "name": "Learning"
+      },
+      "in_bed": {
+        "name": "In bed for the night"
       }
     },
     "button": {

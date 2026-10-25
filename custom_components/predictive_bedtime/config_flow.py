@@ -233,7 +233,7 @@ class _CalendarRulesMixin:
 
 # --- setup -------------------------------------------------------------------
 
-CALENDARS_SCHEMA = vol.Schema({vol.Required(CONF_CALENDARS): CALENDARS})
+CALENDARS_SCHEMA = vol.Schema({vol.Optional(CONF_CALENDARS, default=[]): CALENDARS})
 
 BED_SCHEMA = vol.Schema(
     {
@@ -251,9 +251,20 @@ START_SCHEMA = vol.Schema(
 )
 
 
-def _check_signals(user_input: dict[str, Any]) -> dict[str, str]:
-    if not user_input.get(CONF_IN_BED) and not user_input.get(CONF_ASLEEP):
-        return {"base": "no_signals"}
+def _is_number(hass: HomeAssistant, entity_id: str) -> bool:
+    state = hass.states.get(entity_id)
+    try:
+        float(state.state)  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        return False
+    return True
+
+
+def _check_signals(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str, str]:
+    """None is fine (the In bed for the night switch), but a reading like bed pressure never
+    says in bed or out of bed."""
+    if any(_is_number(hass, e) for e in user_input.get(CONF_IN_BED, [])):
+        return {CONF_IN_BED: "numeric_in_bed"}
     return {}
 
 
@@ -287,32 +298,37 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
         return self.async_show_form(step_id=KIND_HOUSEHOLD, data_schema=vol.Schema({}))
 
     async def async_step_person(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_PERSON])
-            self._abort_if_unique_id_configured()
-            self._data.update(user_input)
-            return await self.async_step_sources()
+            person = user_input[CONF_PERSON]
+            if any(e.unique_id == person for e in self._async_current_entries(include_ignore=False)):
+                # Let them pick someone else rather than ending setup.
+                errors[CONF_PERSON] = "already_configured"
+            else:
+                await self.async_set_unique_id(person)
+                self._abort_if_unique_id_configured()
+                self._data.update(user_input)
+                return await self.async_step_sources()
 
         return self.async_show_form(
-            step_id="person", data_schema=vol.Schema({vol.Required(CONF_PERSON): PERSON})
+            step_id="person",
+            data_schema=vol.Schema({vol.Required(CONF_PERSON): PERSON}),
+            errors=errors,
         )
 
     async def async_step_sources(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input[CONF_CALENDARS]:
-                errors[CONF_CALENDARS] = "no_calendars"
-            else:
-                self._data[CONF_CALENDARS] = user_input[CONF_CALENDARS]
-                self._queue = list(user_input[CONF_CALENDARS])
-                return await self.async_step_calendar()
+            self._data[CONF_CALENDARS] = user_input.get(CONF_CALENDARS, [])
+            self._queue = list(self._data[CONF_CALENDARS])
+            if not self._queue:
+                return await self._async_rules_done()
+            return await self.async_step_calendar()
 
         return self.async_show_form(
             step_id="sources",
             data_schema=self.add_suggested_values_to_schema(
-                CALENDARS_SCHEMA, user_input or {CONF_CALENDARS: self._suggest_calendars()}
+                CALENDARS_SCHEMA, {CONF_CALENDARS: self._suggest_calendars()}
             ),
-            errors=errors,
             description_placeholders={"name": self._first_name()},
         )
 
@@ -323,7 +339,7 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
     async def async_step_signals(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _check_signals(user_input)
+            errors = _check_signals(self.hass, user_input)
             if not errors:
                 self._data.update(user_input)
                 return await self.async_step_habits()
@@ -365,11 +381,13 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
 
     def _suggest_calendars(self) -> list[str]:
         """Calendars whose name mentions the person, e.g. "Work (Sam)"."""
-        name = self._first_name().lower()
+        if CONF_PERSON not in self._data:
+            return []
+        name = self._first_name()
         return [
             state.entity_id
             for state in self.hass.states.async_all("calendar")
-            if name in (state.name or "").lower()
+            if mentions(state.name or "", [name])
         ]
 
     @classmethod
@@ -455,23 +473,20 @@ class PredictiveBedtimeOptionsFlow(_CalendarRulesMixin, OptionsFlow):
     async def async_step_calendars(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input[CONF_CALENDARS]:
-                errors[CONF_CALENDARS] = "no_calendars"
-            else:
-                self._calendars = list(user_input[CONF_CALENDARS])
-                self._queue = list(self._calendars)
-                self._existing_rules = dict(self.config_entry.options.get(CONF_CALENDAR_RULES, {}))
-                return await self.async_step_calendar()
+            self._calendars = list(user_input.get(CONF_CALENDARS, []))
+            self._queue = list(self._calendars)
+            if not self._queue:
+                return await self._async_rules_done()
+            self._existing_rules = dict(self.config_entry.options.get(CONF_CALENDAR_RULES, {}))
+            return await self.async_step_calendar()
 
         return self.async_show_form(
             step_id="calendars",
             data_schema=self.add_suggested_values_to_schema(
                 CALENDARS_SCHEMA,
-                user_input or {CONF_CALENDARS: self.config_entry.options.get(CONF_CALENDARS, [])},
+                {CONF_CALENDARS: self.config_entry.options.get(CONF_CALENDARS, [])},
             ),
-            errors=errors,
             description_placeholders={"name": self._first_name()},
         )
 
@@ -481,7 +496,7 @@ class PredictiveBedtimeOptionsFlow(_CalendarRulesMixin, OptionsFlow):
     async def async_step_signals(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _check_signals(user_input)
+            errors = _check_signals(self.hass, user_input)
             if not errors:
                 return self._save(user_input)
         return self.async_show_form(
