@@ -41,6 +41,16 @@ cards:
         icon_color: amber
         entity: sensor.sam_predictive_sleep_next_wake_up
   - type: custom:mushroom-template-card
+    primary: In bed for the night
+    secondary: Only stays on while home
+    icon: >-
+      {{ 'mdi:bed' if is_state('switch.sam_predictive_sleep_in_bed_for_the_night', 'on') else 'mdi:bed-empty' }}
+    icon_color: >-
+      {{ 'indigo' if is_state('switch.sam_predictive_sleep_in_bed_for_the_night', 'on') else 'grey' }}
+    entity: switch.sam_predictive_sleep_in_bed_for_the_night
+    tap_action:
+      action: toggle
+  - type: custom:mushroom-template-card
     primary: Last sleep
     secondary: >-
       {% set b = states('sensor.sam_predictive_sleep_last_bedtime') | as_datetime(none) %}

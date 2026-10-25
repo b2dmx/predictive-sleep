@@ -249,6 +249,13 @@ START_SCHEMA = vol.Schema(
         vol.Required(CONF_PREP): _number(0, 240, 5, "min"),
     }
 )
+# Without calendars there's nothing to get ready for.
+FREE_START_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_FREE_BEDTIME): TimeSelector(),
+        vol.Required(CONF_TARGET_SLEEP): _number(4, 12, 0.25, "h"),
+    }
+)
 
 
 def _is_number(hass: HomeAssistant, entity_id: str) -> bool:
@@ -369,11 +376,19 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
                 },
             )
 
+        free = not self._data[CONF_CALENDARS]
         return self.async_show_form(
-            step_id="habits",
-            data_schema=self.add_suggested_values_to_schema(START_SCHEMA, DEFAULT_OPTIONS),
+            step_id="habits_free" if free else "habits",
+            data_schema=self.add_suggested_values_to_schema(
+                FREE_START_SCHEMA if free else START_SCHEMA, DEFAULT_OPTIONS
+            ),
             description_placeholders={"name": self._first_name()},
         )
+
+    async def async_step_habits_free(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self.async_step_habits(user_input)
 
     def _first_name(self) -> str:
         person = self.hass.states.get(self._data.get(CONF_PERSON, ""))

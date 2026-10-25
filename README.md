@@ -2,12 +2,12 @@
 
 A Home Assistant integration that **learns when each person in the home goes to sleep** and predicts the next bedtime, so the house can get ready for sleep when sleep is actually expected, instead of on a fixed schedule.
 
-It is built for irregular and rotating work schedules. It reads each person's work calendars, watches whatever sleep signals they have (a bed sensor, an mmWave sensor, a sleep tracker), and learns how their sleep relates to their shifts. When shifts change, predictions change with them.
+It is built for irregular and rotating work schedules, and works without them too. It reads each person's calendars if they have any, watches whatever sleep signals they have (a bed sensor, an mmWave sensor, a sleep tracker, or a switch they flip at bedtime), and learns how their sleep relates to their shifts. When shifts change, predictions change with them.
 
 ## How it works
 
 - **Learns from real nights.** Any stretch of 3+ hours in bed (while home) or asleep according to a tracker is recorded as a night's sleep. Shorter stretches are ignored.
-- **Uses every signal you have.** Combine in-bed signals and sleep trackers; when one drops out, the others fill the gap. Each night records whether a tracker confirmed it.
+- **Uses every signal you have.** Combine in-bed signals and sleep trackers; when one drops out, the others fill the gap. Each night records what confirmed it: a tracker, the In bed for the night switch, or in-bed signals alone.
 - **Thinks in shifts, not weekdays.** Each night is described by hours until the next shift, hours since the last one ended, and time of day. A new rotation, a swapped shift or a schedule that changes every few months is handled by comparing it with similar situations, including ones never seen exactly before.
 - **Starts sensible, then adapts.** Until enough nights are learned, predictions follow the schedule: a full night before early shifts, an unwinding buffer after late ones, and your usual bedtime on free days. As nights accumulate, actual behaviour takes over. **Prediction confidence** shows how far along it is.
 - **Learns how long you sleep, too.** Next wake comes from how long similar nights lasted, capped by the next shift.
@@ -25,7 +25,7 @@ It is built for irregular and rotating work schedules. It reads each person's wo
 | Next bedtime | When this person is expected to go to bed next. Attributes include the schedule-only estimate and the shifts either side. |
 | Next wake-up | When they are expected up: how long similar sleeps lasted, or earlier if a shift needs them up. |
 | Prediction confidence | 0–100 %, how much the prediction rests on learned nights rather than the schedule alone. Diagnostic. |
-| Last bedtime | When the most recent recorded sleep began, and whether a tracker confirmed it. |
+| Last bedtime | When the most recent recorded sleep began, and what recorded it (`tracker`, `switch` or `in_bed`). |
 | Last wake-up | When it ended. |
 | Last sleep duration | Its length in hours, kept as long-term statistics for graphs. |
 | Prediction error | Average minutes between predicted and actual bedtime over the last 14 sleeps. Lower is better. Diagnostic. |
@@ -133,4 +133,4 @@ MIT
 
 ---
 
-<p align="center">Predictive Sleep v0.14.0 by Goobis<br>AI was used to help develop this integration.</p>
+<p align="center">Predictive Sleep v0.14.1 by Goobis<br>AI was used to help develop this integration.</p>

@@ -77,6 +77,8 @@ DEFAULT_WAKE_WORDS = (
 
 # Where a recorded night came from.
 SOURCE_TRACKER = "tracker"
+# Marked with the In bed for the night switch, with no tracker set up.
+SOURCE_SWITCH = "switch"
 SOURCE_IN_BED = "in_bed"
 
 # States that mean an in-bed signal (bed pressure, mmWave, occupancy) sees someone.

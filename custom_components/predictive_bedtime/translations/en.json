@@ -54,6 +54,14 @@
           "prep_minutes": "Time from waking to starting work"
         }
       },
+      "habits_free": {
+        "title": "{name}'s usual routine",
+        "description": "Rough guesses are fine. These are learned from {name}'s real nights from here on.",
+        "data": {
+          "free_bedtime": "Usual bedtime",
+          "target_sleep_hours": "How long {name} usually sleeps"
+        }
+      },
       "unnamed": {
         "title": "{calendar}",
         "description": "Some events here won't say who they're for, like \"Dentist\".",

@@ -34,6 +34,12 @@ cards:
         format: time
       - entity: sensor.sam_predictive_sleep_last_sleep_duration
         name: Duration
+      - entity: switch.sam_predictive_sleep_in_bed_for_the_night
+        name: In bed for the night
+      - type: text
+        icon: mdi:information-outline
+        name: Only stays on while home
+        text: ""
       - type: section
         label: Learning
       - entity: switch.sam_predictive_sleep_learning

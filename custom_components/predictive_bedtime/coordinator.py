@@ -77,6 +77,8 @@ from .model import (
     LEAVE_LATE,
     MAX_SLEEP,
     MODE_WORK,
+    SOURCE_SWITCH,
+    SOURCE_TRACKER,
     Episode,
     Params,
     Prediction,
@@ -185,6 +187,8 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         # The In bed for the night switch, and when it was turned on.
         self.manual_in_bed = False
         self._manual_since: datetime | None = None
+        # The switch was on during the sleep in progress.
+        self._night_switch = False
 
     # --- configuration -------------------------------------------------
 
@@ -324,6 +328,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         self.manual_in_bed = stored.get("manual_in_bed", False)
         if stored.get("manual_since"):
             self._manual_since = dt_util.parse_datetime(stored["manual_since"])
+        self._night_switch = stored.get("night_switch", False)
         self._defer_fetch = bool(self.shifts)
 
     @callback
@@ -417,6 +422,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
             "described_for": self._described_for,
             "manual_in_bed": self.manual_in_bed,
             "manual_since": self._manual_since.isoformat() if self._manual_since else None,
+            "night_switch": self._night_switch,
         }
 
     def _forget_old_nights(self) -> None:
@@ -465,7 +471,11 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         if self.detector.asleep and not was_asleep:
             self._night_paused = self.paused_by is not None
             self._night_predicted = self._prediction_for(self.detector.onset)
+        if self.detector.asleep and self.manual_in_bed:
+            self._night_switch = True
         if finished:
+            if self._night_switch and finished[2] == SOURCE_TRACKER and not self.asleep_signals:
+                finished = (finished[0], finished[1], SOURCE_SWITCH)
             if self._night_paused or self.paused_by is not None:
                 _LOGGER.debug("%s: learning paused, night not recorded", self.config_entry.title)
                 self.last_wake = finished[1]
@@ -475,6 +485,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
                 self._async_notify_recorded(self.episodes[-1])
             self._night_paused = False
             self._night_predicted = None
+            self._night_switch = False
         shown = (self.sleep_attempt, self.is_home)
         if finished or was_asleep != self.detector.asleep:
             self._save()
