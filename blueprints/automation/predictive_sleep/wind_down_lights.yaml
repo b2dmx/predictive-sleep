@@ -1,0 +1,100 @@
+blueprint:
+  name: Predictive Sleep - Wind-down lighting
+  description: >-
+    Dims and warms lights when someone starts winding down before their predicted
+    bedtime, and optionally turns them off once they are expected asleep: when they settle
+    into bed, or at the predicted bedtime if they're still up.
+  domain: automation
+  source_url: https://github.com/b2dmx/predictive-sleep/blob/main/blueprints/automation/predictive_sleep/wind_down_lights.yaml
+  input:
+    wind_down:
+      name: Wind-down sensor
+      description: A person's Wind-down sensor, or the household's Anyone winding down.
+      selector:
+        entity:
+          filter:
+            - integration: predictive_sleep
+              domain: binary_sensor
+    lights:
+      name: Lights
+      selector:
+        target:
+          entity:
+            domain: light
+    brightness:
+      name: Brightness
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    color_temp:
+      name: Colour temperature
+      default: 2200
+      selector:
+        color_temp:
+          unit: kelvin
+          min: 2000
+          max: 4000
+    transition:
+      name: Fade over
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 600
+          unit_of_measurement: s
+    expected_asleep:
+      name: Expected asleep sensor
+      description: A person's Expected asleep sensor, or the household's Everyone expected asleep.
+      selector:
+        entity:
+          filter:
+            - integration: predictive_sleep
+              domain: binary_sensor
+    turn_off:
+      name: Turn the lights off once expected asleep
+      default: true
+      selector:
+        boolean: {}
+
+mode: restart
+
+variables:
+  turn_off: !input turn_off
+
+triggers:
+  - trigger: state
+    entity_id: !input wind_down
+    not_from: [unavailable, unknown]
+    to: "on"
+    id: wind_down
+  - trigger: state
+    entity_id: !input expected_asleep
+    not_from: [unavailable, unknown]
+    to: "on"
+    id: asleep
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: wind_down
+        sequence:
+          - action: light.turn_on
+            target: !input lights
+            data:
+              brightness_pct: !input brightness
+              color_temp_kelvin: !input color_temp
+              transition: !input transition
+      - conditions:
+          - condition: trigger
+            id: asleep
+          - condition: template
+            value_template: "{{ turn_off }}"
+        sequence:
+          - action: light.turn_off
+            target: !input lights
+            data:
+              transition: !input transition
