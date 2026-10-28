@@ -29,7 +29,7 @@ It is built for irregular and rotating work schedules, and works without them to
 | Last wake-up | When it ended. |
 | Last sleep duration | Its length in hours, kept as long-term statistics for graphs. |
 | Prediction error | Average minutes between predicted and actual bedtime over the last 14 sleeps. Lower is better. Diagnostic. |
-| In bed for the night (switch) | For anyone without a bed sensor or tracker: on when going to bed, off when getting up. Counts like a tracker, so it also confirms a sensor. Turns itself off on leaving home. |
+| In bed for the night (switch) | For anyone without a bed sensor or tracker: on when going to bed, off when getting up. Counts like a tracker, so it also confirms a sensor. Turns itself off on leaving home, or 12 hours after it was turned on. |
 | Learning (switch) | Turn off to stop learning by hand. Attributes show whether learning is active right now and what paused it. |
 | Forget last sleep (button) | Removes the most recent sleep from learning. |
 | Skip a night (select) | Pick any night from the past week to leave out of learning, e.g. a bad sensor reading. |
@@ -133,4 +133,4 @@ MIT
 
 ---
 
-<p align="center">Predictive Sleep v0.14.1 by Goobis<br>AI was used to help develop this integration.</p>
+<p align="center">Predictive Sleep v0.14.2 by Goobis<br>AI was used to help develop this integration.</p>

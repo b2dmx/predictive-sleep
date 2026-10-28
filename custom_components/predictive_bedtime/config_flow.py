@@ -68,7 +68,6 @@ from .model import (
 
 # --- selectors -------------------------------------------------------------
 
-PERSON = EntitySelector(EntitySelectorConfig(domain="person"))
 CALENDARS = EntitySelector(EntitySelectorConfig(domain="calendar", multiple=True))
 IN_BED = EntitySelector(
     EntitySelectorConfig(domain=["binary_sensor", "input_boolean", "sensor"], multiple=True)
@@ -272,6 +271,9 @@ def _check_signals(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str,
     says in bed or out of bed."""
     if any(_is_number(hass, e) for e in user_input.get(CONF_IN_BED, [])):
         return {CONF_IN_BED: "numeric_in_bed"}
+    if set(user_input.get(CONF_IN_BED, [])) & set(user_input.get(CONF_ASLEEP, [])):
+        # It would count twice.
+        return {CONF_ASLEEP: "same_signal"}
     return {}
 
 
@@ -286,12 +288,13 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         integration = await async_get_integration(self.hass, DOMAIN)
-        people = [
-            e for e in self._async_current_entries(include_ignore=False) if e.data.get("kind") != KIND_HOUSEHOLD
-        ]
+        entries = self._async_current_entries(include_ignore=False)
+        people = [e for e in entries if e.data.get("kind") != KIND_HOUSEHOLD]
+        # Household sensors need someone to read, and only one set exists.
+        offer_household = bool(people) and len(people) == len(entries)
         return self.async_show_menu(
             step_id="user",
-            menu_options=["person", KIND_HOUSEHOLD] if people else ["person"],
+            menu_options=["person", KIND_HOUSEHOLD] if offer_household else ["person"],
             description_placeholders={"version": str(integration.version or "")},
         )
 
@@ -317,9 +320,14 @@ class PredictiveBedtimeConfigFlow(_CalendarRulesMixin, ConfigFlow, domain=DOMAIN
                 self._data.update(user_input)
                 return await self.async_step_sources()
 
+        # People already set up aren't offered.
+        taken = [e.unique_id for e in self._async_current_entries() if e.unique_id != KIND_HOUSEHOLD]
+        picker = EntitySelector(
+            EntitySelectorConfig(domain="person", exclude_entities=[t for t in taken if t])
+        )
         return self.async_show_form(
             step_id="person",
-            data_schema=vol.Schema({vol.Required(CONF_PERSON): PERSON}),
+            data_schema=vol.Schema({vol.Required(CONF_PERSON): picker}),
             errors=errors,
         )
 

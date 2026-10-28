@@ -75,10 +75,10 @@ from .model import (
     KIND_UNNAMED,
     LEAVE_BEFORE,
     LEAVE_LATE,
-    MAX_SLEEP,
     MODE_WORK,
     SOURCE_SWITCH,
     SOURCE_TRACKER,
+    SWITCH_LIMIT,
     Episode,
     Params,
     Prediction,
@@ -449,9 +449,9 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
         now = dt_util.utcnow()
         if self.manual_in_bed and (
             not self.is_home
-            or (self._manual_since is not None and now - self._manual_since >= MAX_SLEEP)
+            or (self._manual_since is not None and now - self._manual_since >= SWITCH_LIMIT)
         ):
-            # Forgotten in the morning: leaving home (or a day passing) means they're up.
+            # Forgotten in the morning: leaving home (or 12 hours passing) means they're up.
             self.manual_in_bed, self._manual_since = False, None
             self._save()
             self.async_update_listeners()
@@ -510,7 +510,7 @@ class BedtimeCoordinator(DataUpdateCoordinator[Prediction]):
                 moments.append(guess.bedtime - ATTEMPT_WINDOW)
             due = min(moments)
         if self.manual_in_bed and self._manual_since is not None:
-            limit = self._manual_since + MAX_SLEEP
+            limit = self._manual_since + SWITCH_LIMIT
             due = min(due, limit) if due else limit
         if due:
             self._unsub_detector = async_track_point_in_utc_time(

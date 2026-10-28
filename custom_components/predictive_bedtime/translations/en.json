@@ -38,7 +38,7 @@
         "description": "Pick a bed sensor, a sleep tracker, or both. Without either, use the In bed for the night switch: on going to bed, off on getting up.",
         "data": {
           "in_bed_signals": "In-bed sensors",
-          "asleep_signals": "Sleep tracker"
+          "asleep_signals": "Sleep trackers"
         },
         "data_description": {
           "in_bed_signals": "A bed sensor for {name}'s side that turns on and off, or presence aimed at the bed. Not a number like bed pressure.",
@@ -50,8 +50,8 @@
         "description": "Rough guesses are fine. These are learned from {name}'s real nights from here on.",
         "data": {
           "free_bedtime": "Usual bedtime on a night off",
-          "target_sleep_hours": "Sleep needed before work",
-          "prep_minutes": "Time from waking to starting work"
+          "target_sleep_hours": "Sleep needed before an early start",
+          "prep_minutes": "Time from waking to heading out"
         }
       },
       "habits_free": {
@@ -75,7 +75,8 @@
     },
     "error": {
       "already_configured": "This person is already set up. Pick someone else.",
-      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed."
+      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed.",
+      "same_signal": "Pick each sensor in one place only: in-bed sensors or sleep trackers."
     },
     "abort": {
       "already_configured": "This person is already set up.",
@@ -163,7 +164,8 @@
       }
     },
     "error": {
-      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed."
+      "numeric_in_bed": "This reads a number, not in bed or out of bed. Pick the sensor that turns on when someone's in bed.",
+      "same_signal": "Pick each sensor in one place only: in-bed sensors or sleep trackers."
     }
   },
   "entity": {

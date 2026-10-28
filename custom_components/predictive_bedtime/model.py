@@ -40,6 +40,8 @@ LOOKAHEAD = timedelta(hours=24)
 NIGHT_SPAN = timedelta(hours=6)
 MIN_WEIGHT = 0.02
 MAX_SLEEP = timedelta(hours=16)
+# The In bed for the night switch turns itself off this long after being turned on.
+SWITCH_LIMIT = timedelta(hours=12)
 
 # What calendar events are.
 KIND_WORK = "work"
