@@ -1,136 +1,67 @@
-# Predictive Sleep
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/predictive_bedtime/brand/dark_icon@2x.png">
+    <img src="custom_components/predictive_bedtime/brand/icon@2x.png" width="140" alt="Predictive Sleep logo">
+  </picture>
+</p>
 
-A Home Assistant integration that **learns when each person in the home goes to sleep** and predicts the next bedtime, so the house can get ready for sleep when sleep is actually expected, instead of on a fixed schedule.
+<h1 align="center">Predictive Sleep</h1>
 
-It is built for irregular and rotating work schedules, and works without them too. It reads each person's calendars if they have any, watches whatever sleep signals they have (a bed sensor, an mmWave sensor, a sleep tracker, or a switch they flip at bedtime), and learns how their sleep relates to their shifts. When shifts change, predictions change with them.
+<p align="center"><b>Learns when each person goes to sleep, and predicts the next bedtime.</b></p>
 
-## How it works
+<p align="center">
+  <a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistantcommunitystore&logoColor=white" alt="HACS Custom"></a>
+  <a href="https://ko-fi.com/goobis2dmx"><img src="https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=kofi&logoColor=white" alt="Support on Ko-fi"></a>
+</p>
 
-- **Learns from real nights.** Any stretch of 3+ hours in bed (while home) or asleep according to a tracker is recorded as a night's sleep. Shorter stretches are ignored.
-- **Uses every signal you have.** Combine in-bed signals and sleep trackers; when one drops out, the others fill the gap. Each night records what confirmed it: a tracker, the In bed for the night switch, or in-bed signals alone.
-- **Thinks in shifts, not weekdays.** Each night is described by hours until the next shift, hours since the last one ended, and time of day. A new rotation, a swapped shift or a schedule that changes every few months is handled by comparing it with similar situations, including ones never seen exactly before.
-- **Starts sensible, then adapts.** Until enough nights are learned, predictions follow the schedule: a full night before early shifts, an unwinding buffer after late ones, and your usual bedtime on free days. As nights accumulate, actual behaviour takes over. **Prediction confidence** shows how far along it is.
-- **Learns how long you sleep, too.** Next wake comes from how long similar nights lasted, capped by the next shift.
-- **Learns your habits, not just your bedtimes.** Usual bedtime on free nights, sleep needed before a shift, unwind time after one, and get-ready time before one are all learned from real nights. The values asked for at setup are only where learning starts, so they're not in Configure.
-- **Optional sleep debt.** When enabled, how much was slept in the previous 48 hours is also compared, since short nights tend to lead to earlier bedtimes.
-- **You stay in control.** A Learning switch and "pause learning when" conditions (a home-mode selector, a guest or vacation toggle) keep untypical nights out. A Skip a night picker (any night from the past week), a Forget last sleep button, an action, and an optional phone notification with a Forget button handle the rest.
-- **Bounded memory.** Nights older than the learning window (365 days by default) are discarded. Within the window, recent nights count more.
-- **Nothing polls.** Calendars are re-read once a day, or immediately when one of that person's calendars changes. Sensors switch at the exact moments they are due.
-- **Head start.** On first setup it learns from whatever bed history the recorder still holds.
+A Home Assistant integration. The house gets ready for sleep when sleep is actually expected, not on a fixed schedule.
 
-## Entities (per person)
+## What it does
 
-| Entity | What it is |
-|---|---|
-| Next bedtime | When this person is expected to go to bed next. Attributes include the schedule-only estimate and the shifts either side. |
-| Next wake-up | When they are expected up: how long similar sleeps lasted, or earlier if a shift needs them up. |
-| Prediction confidence | 0–100 %, how much the prediction rests on learned nights rather than the schedule alone. Diagnostic. |
-| Last bedtime | When the most recent recorded sleep began, and what recorded it (`tracker`, `switch` or `in_bed`). |
-| Last wake-up | When it ended. |
-| Last sleep duration | Its length in hours, kept as long-term statistics for graphs. |
-| Prediction error | Average minutes between predicted and actual bedtime over the last 14 sleeps. Lower is better. Diagnostic. |
-| In bed for the night (switch) | For anyone without a bed sensor or tracker: on when going to bed, off when getting up. Counts like a tracker, so it also confirms a sensor. Turns itself off on leaving home, or 12 hours after it was turned on. |
-| Learning (switch) | Turn off to stop learning by hand. Attributes show whether learning is active right now and what paused it. |
-| Forget last sleep (button) | Removes the most recent sleep from learning. |
-| Skip a night (select) | Pick any night from the past week to leave out of learning, e.g. a bad sensor reading. |
-| Expected asleep | On while they are home and either in the predicted sleep window or going to sleep: settled in bed within 2 hours of the predicted bedtime, asleep per a tracker, or in bed long enough to be a real sleep. Reading in bed in the afternoon doesn't count. |
-| Wind-down | On for a set time before the predicted bedtime. |
-
-### Household sensors (optional)
-
-Add the integration once more and choose **Add household sensors** for whole-home views across everyone set up. Handy for locks, heating and common-area lights, especially without a home-mode system of your own.
-
-| Entity | What it is |
-|---|---|
-| Everyone expected asleep | On when everyone who is home is expected asleep. Attributes list who is and who isn't. |
-| Anyone winding down | On when anyone who is home is winding down. |
-| Earliest bedtime / Latest bedtime | Earliest and latest predicted bedtimes, with who they belong to. |
-
-### Example
-
-```yaml
-triggers:
-  - trigger: state
-    entity_id: binary_sensor.sam_predictive_sleep_wind_down
-    to: "on"
-actions:
-  - action: light.turn_on
-    target:
-      area_id: bedroom
-    data:
-      brightness_pct: 30
-      color_temp_kelvin: 2200
-```
-
-## Blueprints
-
-Ready-made automations. Each asks you to pick Predictive Sleep sensors, so they work for any person or the household.
-
-| Blueprint | What it does | |
-|---|---|---|
-| Wind-down lighting | Dims and warms lights at wind-down, optionally off once expected asleep | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fb2dmx%2Fpredictive-sleep%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fpredictive_sleep%2Fwind_down_lights.yaml) |
-| Pre-cool or pre-heat the bedroom | Sets the thermostat a chosen lead time before the predicted bedtime | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fb2dmx%2Fpredictive-sleep%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fpredictive_sleep%2Fprecondition_bedroom.yaml) |
-| Bedtime and wake-up routine | Your own actions at expected sleep and wake: lock up, blinds, do-not-disturb, alarm | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fb2dmx%2Fpredictive-sleep%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fpredictive_sleep%2Fsleep_routine.yaml) |
-| Bedtime reminder before early shifts | A phone reminder before bedtime, only when the next shift is soon after it | [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fb2dmx%2Fpredictive-sleep%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fpredictive_sleep%2Fbedtime_reminder.yaml) |
-
-## Dashboard card
-
-The [`dashboards`](dashboards) folder has the same card three ways: [built-in cards only](dashboards/default.yaml), [Mushroom](dashboards/mushroom.yaml) and [Bubble Card](dashboards/bubble.yaml). Add a Manual card, paste one in, and replace `sam` with the person's first name as it appears in their entity IDs. The cards show clock times; Home Assistant's own entity pages always show times relative ("in 4 hours").
-
-## Requirements
-
-- Optionally, one or more **calendars**. Without any, every night is a free night and bedtimes are learned from habit alone. Each calendar is read its own way, chosen during setup:
-  - **Just work shifts:** every timed event is a shift (a dedicated work calendar).
-  - **Work and other appointments:** only events whose title or description mentions a wake-up word count: work, shift, school, class, appointment, doctor, dentist, therapy, meeting, interview, flight, exam and so on (editable). Birthdays, holidays and anything else are ignored. Work events shape the sleep pattern; the rest are appointments that only set how early the person must be up.
-  - **Several people's events (family calendar):** e.g. "Sam dentist" counts for Sam but not for Alex. Home Assistant can't see who created an event, so the name stands in for it. Events that don't mention anyone ("Dentist") can be skipped, or guessed from who leaves home: whoever left home for one is who it was for, and its title and place are remembered so the next one is predicted ahead of time.
-
-  Matching is whole-word and ignores case, so `work` matches "Work (Sam)" but not "Workout". All-day events are always ignored.
-- A **person** entity, and ideally a **sleep signal**. Without one, use the **In bed for the night** switch each night.
-
-| Signal | Examples | Treated as |
-|---|---|---|
-| In-bed | Bed pressure sensor for their side, mmWave presence aimed at the bed, occupancy sensor | In bed once settled for 20 minutes, while home |
-| Sleep tracker | Sleep as Android, Withings, Fitbit, Apple Health sleep data (e.g. via Health Auto Export) | Asleep immediately; text states like `asleep` or `deep` are configurable |
-
-Avoid "sleep focus" or bedtime-schedule entities: they follow preset times rather than actual sleep, which is what this integration replaces.
+- **Learns from real nights** using any sleep signal: bed sensor, mmWave, sleep tracker, or a switch.
+- **Thinks in shifts, not weekdays.** Reads work calendars, so rotating schedules just work.
+- **Predicts** next bedtime, next wake-up, and a wind-down window, per person and for the household.
+- **Runs locally.** Nothing polls, nothing leaves your system.
 
 ## Installation
 
-### HACS
+You need a **person** entity, ideally a sleep signal, and optionally a calendar.
 
-1. HACS → ⋮ → **Custom repositories** → add `https://github.com/b2dmx/predictive-sleep`, category **Integration**.
-2. Download **Predictive Sleep**, then restart Home Assistant.
-3. **Settings → Devices & services → Add integration → Predictive Sleep**, once per person.
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=b2dmx&repository=predictive-sleep&category=integration)
 
-### Manual
+1. Open in HACS (button above), download **Predictive Sleep**, restart.
+2. **Settings → Devices & services → Add integration → Predictive Sleep**, once per person.
 
-Copy `custom_components/predictive_bedtime` into your `config/custom_components` folder and restart.
+Manual: copy `custom_components/predictive_bedtime` into `config/custom_components` and restart.
 
-## Actions
+## Onboarding
 
-`predictive_bedtime.forget_last_night` removes the most recent sleep for one person (pick their entry).
+Setup takes a minute, all in the UI:
 
-## Setup and settings
+1. **Person.**
+2. **Calendars** (optional): just shifts, work and appointments, or a shared family calendar.
+3. **Sleep signals:** in-bed sensors and/or trackers.
+4. **Starting points:** usual bedtime, sleep needed, get-ready time. These are learned from then on.
 
-Setup takes a minute: the person, their calendars if any (and, for each, whether it holds only work shifts, work and appointments, or is shared with others), how to tell they're in bed, and a starting point for their usual bedtime, sleep needed and get-ready time. Those three are learned from real nights from then on, so they aren't settings.
+Add it once more and choose **Add household sensors** for whole-home views.
 
-Everything else is optional and lives under **Configure**:
+## Tips
 
-| Page | Settings (defaults) |
-|---|---|
-| Calendars | Calendars and what each holds; the words that make an event count; for family calendars, whether to guess events that don't mention anyone |
-| Sleep signals | In-bed sensors, sleep trackers, tracker states that mean asleep |
-| Learning | Pause learning when (none) / in states (on, Guest, Vacation, Away); a note after each night (off); sleep debt (off); remember nights for (365 days) |
-| Timing | Wind-down (60 min before bedtime); in bed 20 min counts as going to sleep; out of bed 30 min counts as awake; shortest night 3 h |
+- No sensor? Flip the **In bed for the night** switch at bedtime and on waking. It turns itself off after 12 hours.
+- Use **Wind-down** to dim lights and **Expected asleep** to lock up. [Blueprints](blueprints/automation/predictive_sleep) are ready to import.
+- Bad night? Use **Skip a night** or **Forget last sleep** to keep it out of learning.
+- Add a guest or vacation toggle under **Configure → Learning** so odd nights are ignored.
+- Avoid "sleep focus" entities: they follow preset times, not real sleep.
+- Ready-made [dashboard cards](dashboards): built-in, Mushroom and Bubble Card.
 
-## Privacy
+## More
 
-Everything runs locally. Learned nights are stored in Home Assistant's `.storage` folder and never leave your system.
-
-## License
-
-MIT
+[Full reference →](docs/reference.md) (how it learns, entities, blueprints, calendars, settings)
 
 ---
 
-<p align="center">Predictive Sleep v0.14.2 by Goobis<br>AI was used to help develop this integration.</p>
+<p align="center">
+  <a href="LICENSE">MIT</a> · <a href="https://ko-fi.com/goobis2dmx">Support on Ko-fi</a><br><br>
+  Predictive Sleep v0.14.2 by Goobis<br>
+  AI was used to help develop this application
+</p>
