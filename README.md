@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png">
-    <img src="docs/logo.png" height="120" alt="Predictive Sleep">
+    <img src="docs/logo.png" height="150" alt="Predictive Sleep">
   </picture>
 </p>
 
