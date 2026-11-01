@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="custom_components/predictive_sleep/brand/dark_icon@2x.png">
-    <img src="custom_components/predictive_sleep/brand/icon@2x.png" width="140" alt="Predictive Sleep logo">
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/predictive_sleep/brand/dark_logo@2x.png">
+    <img src="custom_components/predictive_sleep/brand/logo@2x.png" height="168" alt="Predictive Sleep logo">
   </picture>
 </p>
 
