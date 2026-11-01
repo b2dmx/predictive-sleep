@@ -1,11 +1,9 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="custom_components/predictive_sleep/brand/dark_logo@2x.png">
-    <img src="custom_components/predictive_sleep/brand/logo@2x.png" height="168" alt="Predictive Sleep logo">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.png">
+    <img src="docs/logo.png" height="120" alt="Predictive Sleep">
   </picture>
 </p>
-
-<h1 align="center">Predictive Sleep</h1>
 
 <p align="center"><b>Learns when each person goes to sleep, and predicts the next bedtime.</b></p>
 
