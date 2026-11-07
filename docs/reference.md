@@ -13,7 +13,7 @@ It is built for irregular and rotating work schedules, and works without them to
 - **Learns how long you sleep, too.** Next wake comes from how long similar nights lasted, capped by the next shift.
 - **Learns your habits, not just your bedtimes.** Usual bedtime on free nights, sleep needed before a shift, unwind time after one, and get-ready time before one are all learned from real nights. The values asked for at setup are only where learning starts, so they're not in Configure.
 - **Optional sleep debt.** When enabled, how much was slept in the previous 48 hours is also compared, since short nights tend to lead to earlier bedtimes.
-- **You stay in control.** A Learning switch and "pause learning when" conditions (a home-mode selector, a guest or vacation toggle) keep untypical nights out. A Skip a night picker (any night from the past week), a Forget last sleep button, an action, and an optional phone notification with a Forget button handle the rest.
+- **You stay in control.** A Learning switch and "pause learning when" conditions (a home-mode selector, a guest or vacation toggle) keep untypical nights out. A Skip a night picker (any night from the past 30 days), a Forget last sleep button, an action, and an optional phone notification with a Forget button handle the rest.
 - **Bounded memory.** Nights older than the learning window (365 days by default) are discarded. Within the window, recent nights count more.
 - **Nothing polls.** Calendars are re-read once a day, or immediately when one of that person's calendars changes. Sensors switch at the exact moments they are due.
 - **Head start.** On first setup it learns from whatever bed history the recorder still holds.
@@ -32,7 +32,7 @@ It is built for irregular and rotating work schedules, and works without them to
 | In bed for the night (switch) | For anyone without a bed sensor or tracker: on when going to bed, off when getting up. Counts like a tracker, so it also confirms a sensor. Turns itself off on leaving home, or 12 hours after it was turned on. |
 | Learning (switch) | Turn off to stop learning by hand. Attributes show whether learning is active right now and what paused it. |
 | Forget last sleep (button) | Removes the most recent sleep from learning. |
-| Skip a night (select) | Pick any night from the past week to leave out of learning, e.g. a bad sensor reading. |
+| Skip a night (select) | Pick any night from the past 30 days to leave out of learning, e.g. a bad sensor reading. |
 | Expected asleep | On while they are home and either in the predicted sleep window or going to sleep: settled in bed within 2 hours of the predicted bedtime, asleep per a tracker, or in bed long enough to be a real sleep. Reading in bed in the afternoon doesn't count. |
 | Wind-down | On for a set time before the predicted bedtime. |
 

@@ -62,6 +62,6 @@ Add it once more and choose **Add household sensors** for whole-home views.
 
 <p align="center">
   <a href="LICENSE">MIT</a> · <a href="https://ko-fi.com/goobis2dmx">Support on Ko-fi</a><br><br>
-  Predictive Sleep v0.15.0 by Goobis<br>
+  Predictive Sleep v0.15.1 by Goobis<br>
   AI was used to help develop this application
 </p>

@@ -1,4 +1,4 @@
-"""Skip a night: pick any night from the last week to leave out of learning."""
+"""Skip a night: pick any night from the last 30 days to leave out of learning."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -17,7 +17,7 @@ SKIP = SelectEntityDescription(
 )
 # Shown when nothing is being skipped; picking a night skips it and returns here.
 NONE = "—"
-WINDOW = timedelta(days=7)
+WINDOW = timedelta(days=30)
 
 
 def _label(onset: datetime) -> str:
