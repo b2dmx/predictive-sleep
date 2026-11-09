@@ -58,6 +58,10 @@ Add it once more and choose **Add household sensors** for whole-home views.
 
 [Full reference →](docs/reference.md) (how it learns, entities, blueprints, calendars, settings)
 
+## License
+
+The code is [MIT](LICENSE). The Predictive Sleep logo and icons (`brand-source/`, the `brand/` folder in the integration, and the logo images in `docs/`) are © Goobis, all rights reserved. They are not covered by the MIT license, so please don't reuse them without permission.
+
 ---
 
 <p align="center">
